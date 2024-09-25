@@ -4,7 +4,7 @@
 #include <gl/freeglut_ext.h>
 #include <ctime>
 #include <cstdlib> // rand() 함수를 사용하기 위해 추가
-
+#include <stdio.h>
 #define COL 600
 #define ROW 800
 #define MAX 10
@@ -17,8 +17,10 @@ void Motion(int x, int y);
 void drawRect();
 void passiveMotion(int x, int y);
 bool timerRunning = false; // 타이머 상태를 저장하는 변수
-bool LeftClick = false;
 int currentBlcokcnt{};
+int selectedBlock{MAX};
+
+float previousMouseX, previousMouseY;
 
 float square[MAX][4] = {};
 float colors[MAX][3] = { {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 0.0} }; // 사각형 색상
@@ -30,11 +32,7 @@ void drawRect() {
         glRectf(square[i][0], square[i][1], square[i][2], square[i][3]);
     }
 }
-void Motion(int x, int y) {
-    if (LeftClick == true) {
 
-    }
-}
 
 int main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정 
 {
@@ -71,6 +69,7 @@ void passiveMotion(int x, int y) {
     float xpos = static_cast<float>(x) / (ROW / 2.0f) - 1.0f;
     float ypos = 1.0f - static_cast<float>(y) / (COL / 2.0f);
     std::cout << "x = " << x << " y = " << y << " -> xpos = " << xpos << " ypos = " << ypos << std::endl;
+    std::cout << currentBlcokcnt << std::endl;
 }
 
 GLvoid Reshape(int w, int h) //--- 콜백 함수: 다시 그리기 콜백 함수 
@@ -91,27 +90,87 @@ GLvoid drawScene() //--- 콜백 함수: 그리기 콜백 함수
 
 void Mouse(int button, int state, int x, int y)
 {
-    // OpenGL 좌표로 변환
+    // OpenGL 좌표로 변환 (화면의 크기를 고려)
     float xpos = (static_cast<float>(x) / (ROW / 2.0f)) - 1.0f;
     float ypos = 1.0f - (static_cast<float>(y) / (COL / 2.0f));
-    if (state == GLUT_DOWN) {
-        bool inRectangle = false;
-
-        if (button == GLUT_LEFT_BUTTON) {
-            for (int i = 0; i < 4; i++) {
-                if (xpos >= square[i][0] && xpos <= square[i][2] && ypos >= square[i][1] && ypos <= square[i][3]) {
-                    inRectangle = true;
-                    colors[i][0] = static_cast<float>(rand()) / RAND_MAX;
-                    colors[i][1] = static_cast<float>(rand()) / RAND_MAX;
-                    colors[i][2] = static_cast<float>(rand()) / RAND_MAX;
-                }
-            }
-            if (!inRectangle) {
-                bgColor[0] = static_cast<float>(rand()) / RAND_MAX;
-                bgColor[1] = static_cast<float>(rand()) / RAND_MAX;
-                bgColor[2] = static_cast<float>(rand()) / RAND_MAX;
+    
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        for (int i = currentBlcokcnt - 1; i >= 0; i--) {
+            // 사각형 내부 클릭 여부 확인 
+            if ((xpos > square[i][0]) && (xpos < square[i][2]) && (ypos > square[i][1]) && (ypos < square[i][3])) {
+                selectedBlock = i;
+                previousMouseX = xpos;
+                previousMouseY = ypos;
+                break;
             }
         }
+    }
+    else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+        bool inRectangle = false;
+        for (int i = currentBlcokcnt - 1; i >= 0; i--) {
+            // 사각형 내부 클릭 여부 확인 
+            if ((xpos > square[i][0]) && (xpos < square[i][2]) && (ypos > square[i][1]) && (ypos < square[i][3])&&(selectedBlock != i)) {
+                square[i][0] = (square[i][0] < square[selectedBlock][0]) ? square[i][0] : square[selectedBlock][0];
+                square[i][2] = (square[i][2] > square[selectedBlock][2]) ? square[i][2] : square[selectedBlock][2];
+                square[i][1] = (square[i][1] < square[selectedBlock][1]) ? square[i][1] : square[selectedBlock][1];
+                square[i][3] = (square[i][3] > square[selectedBlock][3]) ? square[i][3] : square[selectedBlock][3];
+                colors[i][0] = static_cast<float>(rand()) / RAND_MAX;
+                colors[i][1] = static_cast<float>(rand()) / RAND_MAX;
+                colors[i][2] = static_cast<float>(rand()) / RAND_MAX;
+                inRectangle = true;
+                break;
+            }
+        }
+        if (inRectangle)
+        {
+            if (currentBlcokcnt == selectedBlock)
+            {
+                square[currentBlcokcnt][0] = {};
+                square[currentBlcokcnt][1] = {};
+                square[currentBlcokcnt][2] = {};
+                square[currentBlcokcnt][3] = {};
+                currentBlcokcnt--;
+            }
+            else
+            {
+                for (int i = selectedBlock; i < currentBlcokcnt - 1; i++)
+                {
+                    square[i][0] = square[i + 1][0];
+                    square[i][1] = square[i + 1][1];
+                    square[i][2] = square[i + 1][2];
+                    square[i][3] = square[i + 1][3];
+                }
+                currentBlcokcnt--;
+            }
+        }
+        
+        
+        selectedBlock = MAX;
+    }
+    glutPostRedisplay(); // 화면 갱신
+}
+
+void Motion(int x, int y) {
+    std::cout << selectedBlock << std::endl;
+    if (selectedBlock < MAX) { // 선택된 블록이 있을 때만 동작
+        // OpenGL 좌표로 변환
+        float xpos = static_cast<float>(x) / (ROW / 2.0f) - 1.0f;
+        float ypos = 1.0f - static_cast<float>(y) / (COL / 2.0f);
+
+        // 마우스 이동량 계산
+        float deltaX = xpos - previousMouseX;
+        float deltaY = ypos - previousMouseY;
+
+        // 선택된 블록 이동
+        square[selectedBlock][0] += deltaX;
+        square[selectedBlock][1] += deltaY;
+        square[selectedBlock][2] += deltaX;
+        square[selectedBlock][3] += deltaY;
+
+        // 마우스 위치 업데이트
+        previousMouseX = xpos;
+        previousMouseY = ypos;
+
         glutPostRedisplay(); // 화면 갱신
     }
 }
@@ -121,9 +180,8 @@ GLvoid Keyboard(unsigned char key, int x, int y)
 
     case 'a':
     {
-        if (currentBlcokcnt < 10)
+        if (currentBlcokcnt < MAX)
         {
-
             for (int i = 0; i < 4; i++)
             {
                 int decide_sign = rand() % 2;
@@ -132,15 +190,26 @@ GLvoid Keyboard(unsigned char key, int x, int y)
                     square[currentBlcokcnt][i] = static_cast<float>(rand()) / RAND_MAX;
                 }
                 else
-                {
+                {   
                     square[currentBlcokcnt][i] = (static_cast<float>(rand()) / RAND_MAX) * (-1);
                 }
+            }
+            if (square[currentBlcokcnt][0] > square[currentBlcokcnt][2])
+            {
+                float temp = square[currentBlcokcnt][0];
+                square[currentBlcokcnt][0] = square[currentBlcokcnt][2];
+                square[currentBlcokcnt][2] = temp;
+            }
+            if (square[currentBlcokcnt][1] > square[currentBlcokcnt][3])
+            {
+                float temp = square[currentBlcokcnt][1];
+                square[currentBlcokcnt][1] = square[currentBlcokcnt][3];
+                square[currentBlcokcnt][3] = temp;
             }
             colors[currentBlcokcnt][0] = static_cast<float>(rand()) / RAND_MAX;
             colors[currentBlcokcnt][1] = static_cast<float>(rand()) / RAND_MAX;
             colors[currentBlcokcnt][2] = static_cast<float>(rand()) / RAND_MAX;
             currentBlcokcnt++;
-
         }
         glutSwapBuffers(); // 버퍼 교체 (화면 갱신)
         glutPostRedisplay(); // 화면 갱신
