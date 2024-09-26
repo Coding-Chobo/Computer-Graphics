@@ -18,7 +18,7 @@ void drawRect();
 void passiveMotion(int x, int y);
 bool timerRunning = false; // 타이머 상태를 저장하는 변수
 int currentBlcokcnt{};
-int selectedBlock{MAX};
+int selectedBlock{ MAX };
 
 float previousMouseX, previousMouseY;
 
@@ -93,10 +93,10 @@ void Mouse(int button, int state, int x, int y)
     // OpenGL 좌표로 변환 (화면의 크기를 고려)
     float xpos = (static_cast<float>(x) / (ROW / 2.0f)) - 1.0f;
     float ypos = 1.0f - (static_cast<float>(y) / (COL / 2.0f));
-    
+
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         for (int i = currentBlcokcnt - 1; i >= 0; i--) {
-            // 사각형 내부 클릭 여부 확인 
+            // 사각형 내부 클릭 여부 확인 a
             if ((xpos > square[i][0]) && (xpos < square[i][2]) && (ypos > square[i][1]) && (ypos < square[i][3])) {
                 selectedBlock = i;
                 previousMouseX = xpos;
@@ -109,7 +109,7 @@ void Mouse(int button, int state, int x, int y)
         bool inRectangle = false;
         for (int i = currentBlcokcnt - 1; i >= 0; i--) {
             // 사각형 내부 클릭 여부 확인 
-            if ((xpos > square[i][0]) && (xpos < square[i][2]) && (ypos > square[i][1]) && (ypos < square[i][3])&&(selectedBlock != i)) {
+            if ((xpos > square[i][0]) && (xpos < square[i][2]) && (ypos > square[i][1]) && (ypos < square[i][3]) && (selectedBlock != i)) {
                 square[i][0] = (square[i][0] < square[selectedBlock][0]) ? square[i][0] : square[selectedBlock][0];
                 square[i][2] = (square[i][2] > square[selectedBlock][2]) ? square[i][2] : square[selectedBlock][2];
                 square[i][1] = (square[i][1] < square[selectedBlock][1]) ? square[i][1] : square[selectedBlock][1];
@@ -121,7 +121,7 @@ void Mouse(int button, int state, int x, int y)
                 break;
             }
         }
-        if (inRectangle)
+        if (inRectangle && selectedBlock < currentBlcokcnt)
         {
             if (currentBlcokcnt == selectedBlock)
             {
@@ -139,12 +139,15 @@ void Mouse(int button, int state, int x, int y)
                     square[i][1] = square[i + 1][1];
                     square[i][2] = square[i + 1][2];
                     square[i][3] = square[i + 1][3];
+                    colors[i][0] = colors[i + 1][0];
+                    colors[i][1] = colors[i + 1][1];
+                    colors[i][2] = colors[i + 1][2];
                 }
                 currentBlcokcnt--;
             }
         }
-        
-        
+
+
         selectedBlock = MAX;
     }
     glutPostRedisplay(); // 화면 갱신
@@ -190,7 +193,7 @@ GLvoid Keyboard(unsigned char key, int x, int y)
                     square[currentBlcokcnt][i] = static_cast<float>(rand()) / RAND_MAX;
                 }
                 else
-                {   
+                {
                     square[currentBlcokcnt][i] = (static_cast<float>(rand()) / RAND_MAX) * (-1);
                 }
             }
