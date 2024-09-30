@@ -7,7 +7,7 @@
 #include <stdio.h>
 #define COL 1000
 #define ROW 1000
-#define MAX 10
+#define MAX 8
 
 struct  Square
 {
@@ -16,8 +16,8 @@ struct  Square
     float x2{};
     float y2{};
     bool is_surv{};
-    int amount{};
     int mode{};
+    int direction2{};
 };
 
 
@@ -51,7 +51,7 @@ int main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
     //--- 윈도우 생성하기
     glutInit(&argc, argv); // glut 초기화
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); // 디스플레이 모드 설정
-    glutInitWindowPosition(100, 100); // 윈도우의 위치 지정
+    glutInitWindowPosition(0, 0); // 윈도우의 위치 지정
     glutInitWindowSize(ROW, COL); // 윈도우의 크기 지정
     glutCreateWindow("Example1"); // 윈도우 생성
 
@@ -71,6 +71,7 @@ int main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
     glutMotionFunc(Motion);
     glutMouseFunc(Mouse);
     glutKeyboardFunc(Keyboard);
+    glutTimerFunc(50, Timer, 0);
     glutMainLoop(); // 이벤트 처리 시작
     return 0;
 }
@@ -113,7 +114,69 @@ void Mouse(int button, int state, int x, int y)
                     square[i].mode = rand() % 4;
                     if (square[i].mode == 3)
                     {
+                        for (int j = 0; j < 8; j++)
+                        {
+                            separeted_square[i][j].is_surv = true;
+                        }
+                        separeted_square[i][0].x1 = square[i].x1;
+                        separeted_square[i][0].x2 = xpos;
+                        separeted_square[i][0].y1 = ypos;
+                        separeted_square[i][0].y2 = square[i].y2;
 
+
+                        separeted_square[i][1].x1 = xpos;
+                        separeted_square[i][1].x2 = square[i].x2;
+                        separeted_square[i][1].y1 = ypos;
+                        separeted_square[i][1].y2 = square[i].y2;
+
+
+                        separeted_square[i][2].x1 = square[i].x1;
+                        separeted_square[i][2].x2 = xpos;
+                        separeted_square[i][2].y1 = square[i].y1;
+                        separeted_square[i][2].y2 = ypos;
+
+
+                        separeted_square[i][3].x1 = xpos;
+                        separeted_square[i][3].x2 = square[i].x2;
+                        separeted_square[i][3].y1 = square[i].y1;
+                        separeted_square[i][3].y2 = ypos;
+
+                        separeted_square[i][4].x1 = square[i].x1;
+                        separeted_square[i][4].x2 = xpos;
+                        separeted_square[i][4].y1 = ypos;
+                        separeted_square[i][4].y2 = square[i].y2;
+
+
+                        separeted_square[i][5].x1 = xpos;
+                        separeted_square[i][5].x2 = square[i].x2;
+                        separeted_square[i][5].y1 = ypos;
+                        separeted_square[i][5].y2 = square[i].y2;
+
+
+                        separeted_square[i][6].x1 = square[i].x1;
+                        separeted_square[i][6].x2 = xpos;
+                        separeted_square[i][6].y1 = square[i].y1;
+                        separeted_square[i][6].y2 = ypos;
+
+
+                        separeted_square[i][7].x1 = xpos;
+                        separeted_square[i][7].x2 = square[i].x2;
+                        separeted_square[i][7].y1 = square[i].y1;
+                        separeted_square[i][7].y2 = ypos;
+
+                        separeted_square[i][0].mode = 0;
+                        separeted_square[i][0].direction2 = 2;
+                        separeted_square[i][1].mode = 1;
+                        separeted_square[i][1].direction2 = 2;
+                        separeted_square[i][2].mode = 0;
+                        separeted_square[i][2].direction2 = 3;
+                        separeted_square[i][3].mode = 1;
+                        separeted_square[i][3].direction2 = 3;
+
+                        for (int j = 4; j < 8; j++)
+                        {
+                            separeted_square[i][j].mode = j-4;
+                        }
                     }
                     else
                     {
@@ -121,25 +184,55 @@ void Mouse(int button, int state, int x, int y)
                         {
                             separeted_square[i][j].is_surv = true;
                         }
+                        if (square[i].mode == 1)
+                        {
+                            separeted_square[i][0].mode = 0;
+                            separeted_square[i][0].direction2 = 2;
+                            separeted_square[i][1].mode = 1;
+                            separeted_square[i][1].direction2 = 2;
+                            separeted_square[i][2].mode = 0;
+                            separeted_square[i][2].direction2 = 3;
+                            separeted_square[i][3].mode = 1;
+                            separeted_square[i][3].direction2 = 3;
+                        }
+                        else if (square[i].mode == 0)
+                        {
+                            for (int j = 0; j < 4; j++)
+                            {
+                                separeted_square[i][j].mode = j;
+                            }
+                        }
+                        else
+                        {
+                            int dcmode = rand() % 4;
+                            for (int j = 0; j < 4; j++)
+                            {
+                                separeted_square[i][j].mode = dcmode;
+                            }
+                        }
                         separeted_square[i][0].x1 = square[i].x1;
                         separeted_square[i][0].x2 = xpos;
-                        separeted_square[i][0].y1 = square[i].y1;
-                        separeted_square[i][0].y2 = ypos;
+                        separeted_square[i][0].y1 = ypos;
+                        separeted_square[i][0].y2 = square[i].y2;
 
+                        
                         separeted_square[i][1].x1 = xpos;
                         separeted_square[i][1].x2 = square[i].x2;
-                        separeted_square[i][1].y1 = square[i].y1;
-                        separeted_square[i][1].y2 = ypos;
+                        separeted_square[i][1].y1 = ypos;
+                        separeted_square[i][1].y2 = square[i].y2;
+
 
                         separeted_square[i][2].x1 = square[i].x1;
                         separeted_square[i][2].x2 = xpos;
-                        separeted_square[i][2].y1 = ypos;
-                        separeted_square[i][2].y2 = square[i].y2;
+                        separeted_square[i][2].y1 = square[i].y1;
+                        separeted_square[i][2].y2 = ypos;
 
-                        separeted_square[i][0].x1 = xpos;
-                        separeted_square[i][0].x2 = square[i].x2;
-                        separeted_square[i][0].y1 = ypos;
-                        separeted_square[i][0].y2 = square[i].y2;
+
+                        separeted_square[i][3].x1 = xpos;
+                        separeted_square[i][3].x2 = square[i].x2;
+                        separeted_square[i][3].y1 = square[i].y1;
+                        separeted_square[i][3].y2 = ypos;
+
                     }
                     square[i].is_surv = false;
                     break;
@@ -189,13 +282,7 @@ void drawRect() {
             }
         }
     }
-    for (int i = 0; i < MAX; ++i) {
-        if (square[i].is_surv)
-        {
-            glColor3f(colors[i][0], colors[i][1], colors[i][2]);
-            glRectf(square[i].x1, square[i].y1, square[i].x2, square[i].y2);
-        }
-    }
+
 }
 void Motion(int x, int y) {
     std::cout << selectedBlock << std::endl;
@@ -230,8 +317,8 @@ void MakeSquare() {
             square[i].y1 = (static_cast<float>(rand()) / RAND_MAX) * (-1);
         }
 
-        square[i].x2 = square[i].x1 + static_cast<float>(rand()) / RAND_MAX / 6;
-        square[i].y2 = square[i].y1 + static_cast<float>(rand()) / RAND_MAX / 6;
+        square[i].x2 = square[i].x1 + static_cast<float>(rand()) / RAND_MAX + 0.1f;
+        square[i].y2 = square[i].y1 + static_cast<float>(rand()) / RAND_MAX + 0.1f;
         colors[i][0] = static_cast<float>(rand()) / RAND_MAX;
         colors[i][1] = static_cast<float>(rand()) / RAND_MAX;
         colors[i][2] = static_cast<float>(rand()) / RAND_MAX;
@@ -239,5 +326,248 @@ void MakeSquare() {
     }
 }
 void Timer(int value) {
+    float moving_gap = 0.05f;
+    for (int i = 0; i < MAX; i++)
+    {
+        if (square[i].mode == 3)
+        {
+            for (int j = 0; j < 8; j++) {
+                if (separeted_square[i][j].is_surv)
+                {
+                    if (j < 4)
+                    {
+                        // 좌우
+                        switch (separeted_square[i][j].mode)
+                        {
+                        case 1: // 우측 이동
+                            if (separeted_square[i][j].x2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].x1 += moving_gap;
+                                separeted_square[i][j].x2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 0;
+                            }
+                            break;
+                        case 0: // 좌측 이동
+                            if (separeted_square[i][j].x1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].x1 -= moving_gap;
+                                separeted_square[i][j].x2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 1;
+                            }
+                            break;
+                        }
+                        //상하
+                        switch (separeted_square[i][j].direction2)
+                        {
+                        case 2: // 위로 이동
+                            if (separeted_square[i][j].y2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].y1 += moving_gap;
+                                separeted_square[i][j].y2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].direction2 = 3;
+                            }
+                            break;
+                        case 3: // 아래로 이동
+                            if (separeted_square[i][j].y1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].y1 -= moving_gap;
+                                separeted_square[i][j].y2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].direction2 = 2;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        switch (separeted_square[i][j].mode) {
+                        case 1: // 우측 이동
+                            if (separeted_square[i][j].x2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].x1 += moving_gap;
+                                separeted_square[i][j].x2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 0;
+                            }
+                            break;
+                        case 0: // 좌측 이동
+                            if (separeted_square[i][j].x1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].x1 -= moving_gap;
+                                separeted_square[i][j].x2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 1;
+                            }
+                            break;
 
+                        case 2: // 위로 이동
+                            if (separeted_square[i][j].y2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].y1 += moving_gap;
+                                separeted_square[i][j].y2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 3;
+                            }
+                            break;
+                        case 3: // 아래로 이동
+                            if (separeted_square[i][j].y1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].y1 -= moving_gap;
+                                separeted_square[i][j].y2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 2;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int j = 0; j < 4; j++) {
+                if (separeted_square[i][j].is_surv)
+                {
+                    if (separeted_square[i][j].x2 - separeted_square[i][j].x1 < 0.02f || separeted_square[i][j].y2 - separeted_square[i][j].y1 < 0.02f)
+                    {
+                        separeted_square[i][j].is_surv = false;
+                    }
+                    else
+                    {
+                        separeted_square[i][j].x1 += 0.002;
+                        separeted_square[i][j].x2 -= 0.002;
+                        separeted_square[i][j].y1 += 0.002;
+                        separeted_square[i][j].y2 -= 0.002; 
+                    }
+
+
+                    switch (square[i].mode)
+                    {
+                    case 0: case 2:
+                        switch (separeted_square[i][j].mode) {
+                        case 1: // 우측 이동
+                            if (separeted_square[i][j].x2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].x1 += moving_gap;
+                                separeted_square[i][j].x2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 0;
+                            }
+                            break;
+                        case 0: // 좌측 이동
+                            if (separeted_square[i][j].x1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].x1 -= moving_gap;
+                                separeted_square[i][j].x2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 1;
+                            }
+                            break;
+
+                        case 2: // 위로 이동
+                            if (separeted_square[i][j].y2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].y1 += moving_gap;
+                                separeted_square[i][j].y2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 3;
+                            }
+                            break;
+                        case 3: // 아래로 이동
+                            if (separeted_square[i][j].y1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].y1 -= moving_gap;
+                                separeted_square[i][j].y2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 2;
+                            }
+                            break;
+                        }
+                        break;
+                    case 1: //-- 대각선 운동
+                        // 좌우
+                        switch (separeted_square[i][j].mode)
+                        {
+                        case 1: // 우측 이동
+                            if (separeted_square[i][j].x2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].x1 += moving_gap;
+                                separeted_square[i][j].x2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 0;
+                            }
+                            break;
+                        case 0: // 좌측 이동
+                            if (separeted_square[i][j].x1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].x1 -= moving_gap;
+                                separeted_square[i][j].x2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].mode = 1;
+                            }
+                            break;
+                        }
+                        //상하
+                        switch (separeted_square[i][j].direction2)
+                        {
+                        case 2: // 위로 이동
+                            if (separeted_square[i][j].y2 + moving_gap < 1.0f)
+                            {
+                                separeted_square[i][j].y1 += moving_gap;
+                                separeted_square[i][j].y2 += moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].direction2 = 3;
+                            }
+                            break;
+                        case 3: // 아래로 이동
+                            if (separeted_square[i][j].y1 - moving_gap > -1.0f)
+                            {
+                                separeted_square[i][j].y1 -= moving_gap;
+                                separeted_square[i][j].y2 -= moving_gap;
+                            }
+                            else
+                            {
+                                separeted_square[i][j].direction2 = 2;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    glutPostRedisplay(); // 화면 갱신
+    glutTimerFunc(100, Timer, value);
 }

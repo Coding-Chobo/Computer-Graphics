@@ -123,6 +123,8 @@ void Mouse(int button, int state, int x, int y)
         }
         if (eraser.is_surv)
         {
+            previousMouseX = xpos;
+            previousMouseY = ypos;
             eraser.x1 = xpos - gap_x;
             eraser.x2 = xpos + gap_x;
             eraser.y1 = ypos - gap_y;
@@ -131,6 +133,9 @@ void Mouse(int button, int state, int x, int y)
     }
     else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
         square[selectedBlock].is_surv = false;
+        eraser.is_surv = false;
+        gap_x = (square[selectedBlock].x2 - square[selectedBlock].x1) / 2;
+        gap_y = (square[selectedBlock].y2 - square[selectedBlock].y1) / 2;
         selectedBlock = MAX;
     }
     glutPostRedisplay(); // 화면 갱신
@@ -152,6 +157,11 @@ void drawRect() {
             glColor3f(colors[i][0], colors[i][1], colors[i][2]);
             glRectf(square[i].x1, square[i].y1, square[i].x2, square[i].y2);
         }
+    }
+    if (eraser.is_surv)
+    {
+        glColor3f(0.0f,0.0f,0.0f);
+        glRectf(eraser.x1, eraser.y1, eraser.x2, eraser.y2);
     }
 }
 void Motion(int x, int y) {
@@ -178,6 +188,34 @@ void Motion(int x, int y) {
                 colors[selectedBlock][0] = colors[i][0];
                 colors[selectedBlock][1] = colors[i][1];
                 colors[selectedBlock][2] = colors[i][2];
+            }
+        }
+        // 마우스 위치 업데이트
+        previousMouseX = xpos;
+        previousMouseY = ypos;
+
+        glutPostRedisplay(); // 화면 갱신
+    }
+    else if (eraser.is_surv)
+    {
+        // OpenGL 좌표로 변환
+        float xpos = static_cast<float>(x) / (ROW / 2.0f) - 1.0f;
+        float ypos = 1.0f - static_cast<float>(y) / (COL / 2.0f);
+
+        // 마우스 이동량 계산
+        float deltaX = xpos - previousMouseX;
+        float deltaY = ypos - previousMouseY;
+
+        // 선택된 블록 이동
+        eraser.x1 += deltaX;
+        eraser.y1 += deltaY;
+        eraser.x2 += deltaX;
+        eraser.y2 += deltaY;
+        for (int i = 0; i < MAX; i++)
+        {
+            if (IsRectOverlap(square[i], eraser) && square[i].is_surv)
+            {
+                square[i].is_surv = false;
             }
         }
         // 마우스 위치 업데이트
