@@ -452,10 +452,10 @@ void Timer(int value) {
                     }
                     else
                     {
-                        separeted_square[i][j].x1 += 0.002;
-                        separeted_square[i][j].x2 -= 0.002;
-                        separeted_square[i][j].y1 += 0.002;
-                        separeted_square[i][j].y2 -= 0.002; 
+                        separeted_square[i][j].x1 += 0.004;
+                        separeted_square[i][j].x2 -= 0.004;
+                        separeted_square[i][j].y1 += 0.004;
+                        separeted_square[i][j].y2 -= 0.004; 
                     }
 
 
