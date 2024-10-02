@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <gl/glew.h> //--- 필요한 헤더파일 include
 #include <gl/freeglut.h>
@@ -11,30 +12,23 @@ GLuint shaderProgramID; //--- 셰이더 프로그램
 
 
 GLuint vao, vbo[2];
-//---------------------------------------------------------------------
+//----------------------------- 함수 선언 -------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void make_vertexShaders();
+void make_fragmentShaders();
+GLuint make_shaderProgram();
+GLvoid drawScene();
+GLvoid Reshape(int w, int h);
+GLint width, height;
+void InitBuffer();
+char* filetobuf(const char* file);
 
 //---------------------------------------------------------------------
 const GLfloat triShape[3][3] = { //--- 삼각형 위치 값
 { -0.5, -0.5, 0.0 }, { 0.5, -0.5, 0.0 }, { 0.0, 0.5, 0.0} };
 const GLfloat colors[3][3] = { //--- 삼각형 꼭지점 색상
 { 1.0, 0.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 1.0 } };
-GLuint vao, vbo[2];
+
 void main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
 {
 	//--- 윈도우 생성하기
@@ -46,8 +40,11 @@ void main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
 	//--- GLEW 초기화하기
 	glewExperimental = GL_TRUE;
 	glewInit();
-	make_shaderProgram();
+
 	InitBuffer();
+	make_vertexShaders();
+	make_fragmentShaders();
+	shaderProgramID = make_shaderProgram();
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
 	glutMainLoop();
@@ -55,7 +52,7 @@ void main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
 
 GLvoid drawScene()
 {
-	GLclampf rColor, gColor, bColor;
+	GLclampf rColor{ 0.5f }, gColor{ 0.5f }, bColor{0.5f};
 	//--- 변경된 배경색 설정
 	glClearColor(rColor, gColor, bColor, 1.0f);
 	//glClearColor(1.0, 1.0, 1.0, 1.0f);
@@ -100,25 +97,27 @@ void InitBuffer()
 	glEnableVertexAttribArray(1);
 }
 
-void make_shaderProgram()
-{
-	make_vertexShaders(); //--- 버텍스 세이더 만들기
-	make_fragmentShaders(); //--- 프래그먼트 세이더 만들기
-	//-- shader Program
-	shaderProgramID = glCreateProgram();
-	glAttachShader(shaderProgramID, vertexShader);
-	glAttachShader(shaderProgramID, fragmentShader);
-	glLinkProgram(shaderProgramID);
-	//--- 세이더 삭제하기
-	glDeleteShader(vertexShader);
+GLuint make_shaderProgram() {
+	GLuint shaderID = glCreateProgram(); //--- 세이더 프로그램 만들기
+	GLint result;
+	GLchar errorLog[512];
+	glAttachShader(shaderID, vertexShader); //--- 세이더 프로그램에 버텍스 세이더 붙이기
+	glAttachShader(shaderID, fragmentShader); //--- 세이더 프로그램에 프래그먼트 세이더 붙이기
+	glLinkProgram(shaderID); //--- 세이더 프로그램 링크하기
+	glDeleteShader(vertexShader); //--- 세이더 프로그램에 링크하여 세이더 객체 자체는 삭제 가능
 	glDeleteShader(fragmentShader);
-	//--- Shader Program 사용하기
-	glUseProgram(shaderProgramID);
+	glGetProgramiv(shaderID, GL_LINK_STATUS, &result); // ---세이더가 잘 연결되었는지 체크하기
+	if (!result) {
+		glGetProgramInfoLog(shaderID, 512, NULL, errorLog);
+		std::cerr << "ERROR: shader program 연결 실패\n" << errorLog << std::endl;
+		return false;
+	}
+	return shaderID;
 }
 
 void make_vertexShaders()
 {
-	vertexSource = filetobuf("vertex.glsl");
+	vertexSource = filetobuf("vertex.vs");
 		//--- 버텍스 세이더 객체 만들기
 		vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	//--- 세이더 코드를 세이더 객체에 넣기
@@ -129,17 +128,36 @@ void make_vertexShaders()
 	GLint result;
 	GLchar errorLog[512];
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &result);
-	If(!result)
+	if(!result)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, errorLog);
-		cerr << “ERROR: vertex shader 컴파일 실패\n” << errorLog << endl;
+		std::cerr << "ERROR: vertex shader 컴파일 실패\n" << errorLog << std::endl;
 		return;
 	}
 }
+char* filetobuf(const char* file)
+{
+	FILE* fptr;
+	long length;
+	char* buf;
+	fptr = fopen(file, "rb"); // Open file for reading 
+	if (!fptr) // Return NULL on failure 
+		return NULL;
+	fseek(fptr, 0, SEEK_END); // Seek to the end of the file 
+	length = ftell(fptr); // Find out how many bytes into the file we are 
+	buf = (char*)malloc(length + 1); // Allocate a buffer for the entire length of the file and a null terminator 
+	fseek(fptr, 0, SEEK_SET); // Go back to the beginning of the file 
+	fread(buf, length, 1, fptr); // Read the contents of the file in to the buffer 
+	fclose(fptr); // Close the file 
+	buf[length] = 0; // Null terminator 
+	return buf; // Return the buffer 
+}
+
+
 //--- 프래그먼트 세이더 객체 만들기
 void make_fragmentShaders()
 {
-	fragmentSource = filetobuf(“fragment.glsl”);
+	fragmentSource = filetobuf("fragment.fs");
 	//--- 프래그먼트 세이더 객체 만들기
 	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	//--- 세이더 코드를 세이더 객체에 넣기
@@ -153,7 +171,7 @@ void make_fragmentShaders()
 	if (!result)
 	{
 		glGetShaderInfoLog(fragmentShader, 512, NULL, errorLog);
-		cerr << "ERROR: fragment shader 컴파일 실패\n" << errorLog << endl;
+		std::cerr << "ERROR: fragment shader 컴파일 실패\n" << errorLog << std::endl;
 		return;
 	}
 }

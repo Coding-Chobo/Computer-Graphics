@@ -53,7 +53,7 @@ int main(int argc, char** argv) //--- 윈도우 출력하고 콜백함수 설정
     else {
         std::cout << "GLEW Initialized\n";
     }
-
+   
     glutDisplayFunc(drawScene); // 출력 함수의 지정
     glutReshapeFunc(Reshape); // 다시 그리기 함수 지정
     glutPassiveMotionFunc(passiveMotion);
