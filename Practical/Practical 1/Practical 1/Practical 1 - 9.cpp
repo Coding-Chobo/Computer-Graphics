@@ -7,6 +7,7 @@
 #include <cstdlib> // rand() 함수를 사용하기 위해 추가
 #include <stdio.h>
 #include <iomanip> // For debug output precision
+#include <math.h>
 
 #define Max 4
 #define Max_vertex 12
@@ -27,8 +28,14 @@ int currentblockcnt{}; // 현재 생성된 도형 개수
 float radius{ 0.15f }; // 도형의 반지름
 GLfloat colors[Max][3][3]; // 각 도형의 색상
 GLfloat vertex[Max_vertex][3];
-int limit_figure[4];
+GLfloat prev[Max_vertex][3]{};
 int currentvertexcnt{};
+int direction1[4]{};
+int direction2[4]{};
+float Sp_radius{};
+GLfloat rect_sprialgap[4]{ 0.0f };
+int theta{};
+bool mode[4]{};
 //----------------------------- 함수 선언 -------------------------------------
 void init_color();
 void make_vertexShaders();
@@ -92,10 +99,7 @@ void init_figure() {
     xpos = 0.5f;
     ypos = -0.5f;
     Make_triangle();
-    limit_figure[0]++;
-    limit_figure[1]++;
-    limit_figure[2]++;
-    limit_figure[3]++;
+
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
 
@@ -217,35 +221,271 @@ GLvoid Reshape(int w, int h) {
 void Timer(int value) {
     float moving_gap = 0.05f;
     float spiral_gap = 0.01f;
-    int direction1[4]{};
-    int direction2[4]{};
 
     switch (value)
     {
-    case 1:
-        for (int i = 0; i < 4; i++)
+    case 1: // 팅기기
+        if (mode[value - 1])
         {
+            for (int i = 0; i < Max; i++)
+            {
+                switch (direction1[i])
+                {
+                case 1: // 좌로 이동
+                    if (vertex[3 * i + 1][0] > -0.95f)
+                    {
+                        vertex[3 * i][0] -= moving_gap;
+                        vertex[3 * i + 1][0] -= moving_gap;
+                        vertex[3 * i + 2][0] -= moving_gap;
+                    }
+                    else
+                    {
+                        direction1[i] = 2;
+                    }
+                    break;
+                case 2: // 우로 이동
+                    if (vertex[3 * i + 2][0] < 0.95f)
+                    {
+                        vertex[3 * i][0] += moving_gap;
+                        vertex[3 * i + 1][0] += moving_gap;
+                        vertex[3 * i + 2][0] += moving_gap;
+                    }
+                    else
+                    {
+                        direction1[i] = 1;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            for (int i = 0; i < Max; i++)
+            {
+                switch (direction2[i])
+                {
+                case 1:
+                    if (vertex[3 * i][1] < 0.95f)
+                    {
+                        vertex[3 * i][1] += moving_gap;
+                        vertex[3 * i + 1][1] += moving_gap;
+                        vertex[3 * i + 2][1] += moving_gap;
+                    }
+                    else
+                    {
+                        direction2[i] = 2;
+                    }
+                    break;
+                case 2:
+                    if (vertex[3 * i + 1][1] > -0.95f)
+                    {
+                        vertex[3 * i][1] -= moving_gap;
+                        vertex[3 * i + 1][1] -= moving_gap;
+                        vertex[3 * i + 2][1] -= moving_gap;
+                    }
+                    else
+                    {
+                        direction2[i] = 1;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        break;
+    case 2: // 지그재그
+        if (mode[value - 1])
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                switch (direction1[i])
+                {
+                case 1: // 좌로 이동
+                    if (vertex[3 * i + 1][0] > -0.95f)
+                    {
+                        vertex[3 * i][0] -= moving_gap;
+                        vertex[3 * i + 1][0] -= moving_gap;
+                        vertex[3 * i + 2][0] -= moving_gap;
+                    }
+                    else if (vertex[3 * i + 1][1] > -0.95f)
+                    {
+                        vertex[3 * i][1] -= moving_gap;
+                        vertex[3 * i + 1][1] -= moving_gap;
+                        vertex[3 * i + 2][1] -= moving_gap;
+                        direction1[i] = 2;
+                    }
+                    else
+                    {
+                        direction1[i] = 3;
+                    }
+                    break;
+                case 2: // 우로 이동
+                    if (vertex[3 * i + 2][0] < 0.95f)
+                    {
+                        vertex[3 * i][0] += moving_gap;
+                        vertex[3 * i + 1][0] += moving_gap;
+                        vertex[3 * i + 2][0] += moving_gap;
+                    }
+                    else if (vertex[3 * i + 1][1] > -0.95f)
+                    {
+                        vertex[3 * i][1] -= moving_gap;
+                        vertex[3 * i + 1][1] -= moving_gap;
+                        vertex[3 * i + 2][1] -= moving_gap;
+                        direction1[i] = 1;
+                    }
+                    else
+                    {
+                        direction1[i] = 3;
+                    }
+                    break;
+                case 3: // 위로 이동
+                    if (vertex[3 * i][1] < 0.95f)
+                    {
+                        vertex[3 * i][1] += moving_gap;
+                        vertex[3 * i + 1][1] += moving_gap;
+                        vertex[3 * i + 2][1] += moving_gap;
+                    }
+                    else if (vertex[3 * i + 2][0] < 0.95f)
+                    {
+                        vertex[3 * i][0] += moving_gap;
+                        vertex[3 * i + 1][0] += moving_gap;
+                        vertex[3 * i + 2][0] += moving_gap;
+                        direction1[i] = 4;
+                    }
+                    else
+                    {
+                        direction1[i] = 1;
+                    }
+                    break;
+                case 4: //아래로 이동
+                    if (vertex[3 * i + 1][1] > -0.95f)
+                    {
+                        vertex[3 * i][1] -= moving_gap;
+                        vertex[3 * i + 1][1] -= moving_gap;
+                        vertex[3 * i + 2][1] -= moving_gap;
+                    }
+                    else if (vertex[3 * i + 2][0] < 0.95f)
+                    {
+                        vertex[3 * i][0] += moving_gap;
+                        vertex[3 * i + 1][0] += moving_gap;
+                        vertex[3 * i + 2][0] += moving_gap;
+                        direction1[i] = 3;
+                    }
+                    else
+                    {
+                        direction1[i] = 1;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        break;
+    case 3: // 네모 스파이럴
+        if (mode[value - 1])
+        {
+            for (int i = 0; i < Max; i++)
+            {
+                switch (direction1[i])
+                {
+                case 1: // 좌로 이동
+                    if (vertex[3 * i + 1][0] > -0.95f + rect_sprialgap[i])
+                    {
+                        vertex[3 * i][0] -= moving_gap;
+                        vertex[3 * i + 1][0] -= moving_gap;
+                        vertex[3 * i + 2][0] -= moving_gap;
+                    }
+                    else
+                    {
+                        direction1[i] = 4;
+                    }
+                    break;
+                case 2: // 우로 이동
+                    if (vertex[3 * i + 2][0] < 0.95f - rect_sprialgap[i])
+                    {
+                        vertex[3 * i][0] += moving_gap;
+                        vertex[3 * i + 1][0] += moving_gap;
+                        vertex[3 * i + 2][0] += moving_gap;
+                    }
+                    else
+                    {
+                        direction1[i] = 3;
+                    }
+                    break;
+                case 3: // 위로 이동
+                    if (vertex[3 * i][1] < 0.95f - rect_sprialgap[i])
+                    {
+                        vertex[3 * i][1] += moving_gap;
+                        vertex[3 * i + 1][1] += moving_gap;
+                        vertex[3 * i + 2][1] += moving_gap;
+                    }
+                    else
+                    {
+                        if (rect_sprialgap[i] < 0.9f)
+                        {
+                            rect_sprialgap[i] += 0.1f;
+                        }
+                        else
+                        {
+                            rect_sprialgap[i] = 0.0f;
+                        }
+
+                        direction1[i] = 1;
+                    }
+                    break;
+                case 4: // 아래로 이동
+                    if (vertex[3 * i + 1][1] > -0.95f + rect_sprialgap[i])
+                    {
+                        vertex[3 * i][1] -= moving_gap;
+                        vertex[3 * i + 1][1] -= moving_gap;
+                        vertex[3 * i + 2][1] -= moving_gap;
+                    }
+                    else
+                    {
+                        direction1[i] = 2;
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
 
         }
-        switch (direction1)
+        break;
+    case 4: // 원 스파이럴
+        if (mode[value-1])
         {
-        default:
-            break;
+            Sp_radius += spiral_gap;
+            if (Sp_radius >= 0.5f)
+            {
+                Sp_radius = 0;
+                theta = 0;
+                for (int i = 0; i < Max_vertex; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        vertex[i][j] = prev[i][j];
+                    }
+                }
+            }
+            theta++;
+            for (int i = 0; i < currentvertexcnt; i++)
+            {
+                vertex[i][0] += Sp_radius * cos(theta);
+                vertex[i][1] += Sp_radius * sin(theta);
+            }
         }
         break;
-    case 2:
-
-        break;
-    case 3:
-
-        break;
-    case 4:
-
-        break;
-
     default:
         break;
     }
+    // VBO 데이터를 업데이트하여 GPU에 다시 전송
+    UpdateVBO();
+
+    // 화면을 다시 그리도록 요청
+    glutPostRedisplay();
+    glutTimerFunc(100, Timer, value);
 }
 
 // 마우스 클릭 이벤트 콜백 함수
@@ -261,19 +501,48 @@ void Mouse(int button, int state, int x, int y) {
 // 키보드 입력 이벤트 콜백 함수
 GLvoid Keyboard(unsigned char key, int x, int y) {
 
+    std::cout << "play timer\n";
     switch (key) {
     case '1':
-        
+
+        for (int i = 0; i < Max; i++)
+        {
+            mode[i]= false;
+            direction1[i] = i % 2 + 1;
+            direction2[i] = i % 2 + 1;
+        }
+        mode[0] = true;
         glutTimerFunc(100, Timer, 1);
         break;
     case '2':
+        for (int i = 0; i < Max; i++)
+        {
+            mode[i] = false;
+            direction1[i] = i + 1;
+        }
+        mode[1] = true;
         glutTimerFunc(100, Timer, 2);
-
+        break;
     case '3':
+        for (int i = 0; i < Max; i++)
+        {
+            direction1[i] = 1;
+            mode[i] = false;
+        }
+        mode[2] = true;
         glutTimerFunc(100, Timer, 3);
-
+        break;
     case '4':
-        
+        theta = 0;
+        Sp_radius = 0.0f;
+        for (int i = 0; i < Max_vertex; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                prev[i][j] = vertex[i][j];
+            }
+        }
+        mode[3] = true;
         glutTimerFunc(100, Timer, 4);
         break;
     }
