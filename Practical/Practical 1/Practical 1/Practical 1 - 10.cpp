@@ -13,7 +13,7 @@
 #define Max_vertex  216
 #define ROW 1000
 #define COL 1000
-
+#define PI 3.141592653589793238
 GLchar* vertexSource, * fragmentSource; // 소스코드 저장 변수
 GLuint vertexShader, fragmentShader; // 세이더 객체
 GLuint shaderProgramID; // 셰이더 프로그램
@@ -25,7 +25,7 @@ GLuint vao, vbo[2]; // VAO와 VBO
 float xpos{ROW/2}, ypos{COL/2}; // 마우스 클릭 위치 좌표
 int limitspiral{}; // 현재 생성된 도형 개수
 float radius{ 0.15f }; // 도형의 반지름
-GLfloat colors[Max][3][3]; // 각 도형의 색상
+GLfloat colors[Max_vertex][3][3]; // 각 도형의 색상
 GLfloat vertex1[2 * Max_vertex][3]{};
 GLfloat vertex2[2 * Max_vertex][3]{};
 GLfloat vertex3[2 * Max_vertex][3]{};
@@ -69,7 +69,7 @@ void Make_triangle() {
 // 색상 초기화 함수
 void init_color() {
     // 각 도형의 색상 값을 초기화
-    for (int i = 0; i < Max; ++i) {
+    for (int i = 0; i < Max_vertex; ++i) {
         for (int j = 0; j < 3; ++j) {
             colors[i][j][0] = static_cast<float>(rand()) / RAND_MAX;
             colors[i][j][1] = static_cast<float>(rand()) / RAND_MAX;
@@ -234,7 +234,7 @@ void Timer(int value) {
                     for (int i = 0; i < limitspiral; i++) {
                         if (!reverse[i]) {
 
-                            if (currentvertexcnt[i] < Max_vertex) {
+                            if (theta < PI * 6) {
                                 std::cout << currentvertexcnt[0] << std::endl;
                                 vertex1[currentvertexcnt[i]][0] = vertex1[0][0] + Sp_radius * cos(theta);
                                 vertex1[currentvertexcnt[i]][1] = vertex1[0][1] + Sp_radius * sin(theta);
@@ -244,12 +244,13 @@ void Timer(int value) {
                             }
                             else {
                                 reverse[i] = true;
+                                theta = PI * 5;
                             }
                         }
                         else // 리버스 모드
                         {
-                            if (currentvertexcnt[i] < 2 * Max_vertex) {
-                                vertex1[currentvertexcnt[i]][0] = vertex1[0][0] + 2 + Sp_radius * cos(theta);
+                            if (theta > -PI) {
+                                vertex1[currentvertexcnt[i]][0] = vertex1[0][0] + 0.25f + Sp_radius * cos(theta);
                                 vertex1[currentvertexcnt[i]][1] = vertex1[0][1] + Sp_radius * sin(theta);
                                 theta -= 0.15;
                                 Sp_radius -= spiral_gap;
