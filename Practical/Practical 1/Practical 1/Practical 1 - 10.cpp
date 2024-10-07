@@ -25,7 +25,7 @@ GLuint vao, vbo[2]; // VAO와 VBO
 float xpos{ROW/2}, ypos{COL/2}; // 마우스 클릭 위치 좌표
 int limitspiral{}; // 현재 생성된 도형 개수
 float radius{ 0.15f }; // 도형의 반지름
-GLfloat colors[Max_vertex][3][3]; // 각 도형의 색상
+GLfloat colors[10 * Max_vertex][3][3]; // 각 도형의 색상
 GLfloat vertex1[2 * Max_vertex][3]{};
 GLfloat vertex2[2 * Max_vertex][3]{};
 GLfloat vertex3[2 * Max_vertex][3]{};
@@ -69,7 +69,7 @@ void Make_triangle() {
 // 색상 초기화 함수
 void init_color() {
     // 각 도형의 색상 값을 초기화
-    for (int i = 0; i < Max_vertex; ++i) {
+    for (int i = 0; i < 10 * Max_vertex; ++i) {
         for (int j = 0; j < 3; ++j) {
             colors[i][j][0] = static_cast<float>(rand()) / RAND_MAX;
             colors[i][j][1] = static_cast<float>(rand()) / RAND_MAX;
@@ -83,7 +83,18 @@ void init_figure() {
     for (int i = 0; i < Max; i++)
     {
         currentvertexcnt[i] = 0;
+        reverse[i] = false;
     }
+    for (int i = 0; i < 2 * Max_vertex; i++)
+    {
+        vertex1[i][2] = 0.0f;
+        vertex2[i][2] = 0.0f;
+        vertex3[i][2] = 0.0f;
+        vertex4[i][2] = 0.0f;
+        vertex5[i][2] = 0.0f;
+    }
+    theta = 0.0f;
+    Sp_radius = 0.0f;
     canmake = true;
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
@@ -135,18 +146,22 @@ void MakeSquare(int point) {
 
 // VAO 및 VBO 초기화
 void InitBuffer() {
-    glGenVertexArrays(1, &vao); // VAO 생성
-    glBindVertexArray(vao); // VAO 바인딩
+    glGenVertexArrays(1, &vao);  // VAO 생성
+    glBindVertexArray(vao);  // VAO 바인딩
 
-    glGenBuffers(2, vbo); // 2개의 VBO 생성
+    glGenBuffers(2, vbo);  // 2개의 VBO 생성
 
     // 정점 좌표 데이터를 VBO에 복사
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, currentvertexcnt[0] * sizeof(vertex1), vertex1, GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex2), vertex2, GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex3), vertex3, GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex4), vertex4, GL_DYNAMIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex5), vertex5, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4) + sizeof(vertex5), nullptr, GL_DYNAMIC_DRAW);
+
+    // 모든 vertex 데이터를 하나의 VBO에 결합하여 전달
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex1), vertex1);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1), sizeof(vertex2), vertex2);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2), sizeof(vertex3), vertex3);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3), sizeof(vertex4), vertex4);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4), sizeof(vertex5), vertex5);
+
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
 
@@ -157,10 +172,12 @@ void InitBuffer() {
     glEnableVertexAttribArray(1);
 }
 
+
 // VBO 데이터를 업데이트하는 함수
 void UpdateVBO() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 
+    // 각 VBO에 대해 데이터가 올바르게 업데이트되고 있는지 확인
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex1), vertex1);
     if (limitspiral >= 2) {
         glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1), sizeof(vertex2), vertex2);
@@ -178,38 +195,38 @@ void UpdateVBO() {
 
 
 
+
 // 화면 그리기 콜백 함수
 GLvoid drawScene() {
-    // 배경색 설정
+    // 배경색 설정 및 화면 클리어
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(shaderProgramID); // 셰이더 프로그램 사용
+    glUseProgram(shaderProgramID);  // 셰이더 프로그램 사용
 
-    glBindVertexArray(vao); // VAO 바인딩
+    glBindVertexArray(vao);  // VAO 바인딩
 
     // 도형 그리기: 각 도형의 정점 개수에 따라 다르게 그려야 함
     int offset = 0;
-    if (!mode_line)
-    {
-        for (int i = 0; i < limitspiral; i++)
-        {
-                glDrawArrays(GL_POINTS, i, currentvertexcnt[i]);
+
+    if (!mode_line) {  // 점으로 그리기
+        for (int i = 0; i < limitspiral; i++) {
+            glDrawArrays(GL_POINTS, offset, currentvertexcnt[i]);  // 각 스파이럴 그리기
+            offset += currentvertexcnt[i];  // 다음 스파이럴의 시작 위치로 오프셋을 증가
         }
     }
-    else
-    {
-        for (int i = 0; i < Max; i++)
-        {
-            for (int j = 0; j < currentvertexcnt[i]; j++)
-            {
-                glDrawArrays(GL_LINES, i, 2);
-            }
+    else {  // 선으로 그리기
+        offset = 0;
+        for (int i = 0; i < limitspiral; i++) {
+             offset += currentvertexcnt[i];  // 다음 스파이럴의 시작 위치로 오프셋을 증가
         }
+        glDrawArrays(GL_LINE_STRIP, 0, offset-5);  // 각 스파이럴을 선으로 그리기
+
     }
 
-    glutSwapBuffers(); // 화면에 출력
+    glutSwapBuffers();  // 화면에 출력
 }
+
 
 // 윈도우 리사이즈 콜백 함수
 GLvoid Reshape(int w, int h) {
@@ -223,64 +240,123 @@ void Timer(int value) {
     switch (value)
     {
     case 0: // 원 스파이럴
-            
+        if (canmake)
+        {
+            if (!reverse[0]) {
 
-            switch (limitspiral)
+                if (theta < PI * 6) {
+                    std::cout << currentvertexcnt[1] << std::endl;
+                    vertex1[currentvertexcnt[0]][0] = vertex1[0][0] + Sp_radius * cos(theta);
+                    vertex1[currentvertexcnt[0]][1] = vertex1[0][1] + Sp_radius * sin(theta);
+                    theta += 0.15;
+                    Sp_radius += spiral_gap;
+                    currentvertexcnt[0]++;
+                }
+                else {
+                    reverse[0] = true;
+                    theta = PI * 5;
+                }
+            }
+            else // 리버스 모드
             {
-            case 1:
+                if (theta > -PI) {
+                    vertex1[currentvertexcnt[0]][0] = vertex1[0][0] + 0.25f + Sp_radius * cos(theta);
+                    vertex1[currentvertexcnt[0]][1] = vertex1[0][1] + Sp_radius * sin(theta);
+                    theta -= 0.15;
+                    Sp_radius -= spiral_gap;
+                    currentvertexcnt[0]++;
+                }
+            }
+            if (limitspiral >= 2)
+            {
+                if (!reverse[1]) {
 
-                if (canmake)
-                {
-                    for (int i = 0; i < limitspiral; i++) {
-                        if (!reverse[i]) {
-
-                            if (theta < PI * 6) {
-                                std::cout << currentvertexcnt[0] << std::endl;
-                                vertex1[currentvertexcnt[i]][0] = vertex1[0][0] + Sp_radius * cos(theta);
-                                vertex1[currentvertexcnt[i]][1] = vertex1[0][1] + Sp_radius * sin(theta);
-                                theta += 0.15;
-                                Sp_radius += spiral_gap;
-                                currentvertexcnt[i]++;
-                            }
-                            else {
-                                reverse[i] = true;
-                                theta = PI * 5;
-                            }
-                        }
-                        else // 리버스 모드
-                        {
-                            if (theta > -PI) {
-                                vertex1[currentvertexcnt[i]][0] = vertex1[0][0] + 0.25f + Sp_radius * cos(theta);
-                                vertex1[currentvertexcnt[i]][1] = vertex1[0][1] + Sp_radius * sin(theta);
-                                theta -= 0.15;
-                                Sp_radius -= spiral_gap;
-                                currentvertexcnt[i]++;
-                            }
-                            else {
-                                canmake = false;
-                            }
-                        }
+                    if (theta < PI * 6) {
+                        vertex2[currentvertexcnt[1]][0] = vertex2[0][0] + Sp_radius * cos(theta);
+                        vertex2[currentvertexcnt[1]][1] = vertex2[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[1]++;
+                    }
+                    else {
+                        reverse[1] = true;
                     }
                 }
+                else // 리버스 모드
+                {
+                    if (theta > -PI) {
+                        vertex2[currentvertexcnt[1]][0] = vertex2[0][0] + 0.25f + Sp_radius * cos(theta);
+                        vertex2[currentvertexcnt[1]][1] = vertex2[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[1]++;
+                    }
+                }
+            }
+            if (limitspiral >= 3)
+            {
+                if (!reverse[2]) {
 
-                break;
-            case 2:
+                    if (theta < PI * 6) {
+                        vertex3[currentvertexcnt[2]][0] = vertex3[0][0] + Sp_radius * cos(theta);
+                        vertex3[currentvertexcnt[2]][1] = vertex3[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[2]++;
+                    }
+                    else {
+                        reverse[2] = true;
+                    }
+                }
+                else // 리버스 모드
+                {
+                    if (theta > -PI) {
+                        vertex3[currentvertexcnt[2]][0] = vertex3[0][0] + 0.25f + Sp_radius * cos(theta);
+                        vertex3[currentvertexcnt[2]][1] = vertex3[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[2]++;
+                    }
+                }
+            }
+            if (limitspiral >= 4)
+            {
+                if (!reverse[3]) {
 
-                break;
-            case 3:
+                    if (theta < PI * 6) {
+                        vertex4[currentvertexcnt[3]][0] = vertex4[0][0] + Sp_radius * cos(theta);
+                        vertex4[currentvertexcnt[3]][1] = vertex4[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[3]++;
+                    }
+                    else {
+                        reverse[3] = true;
+                    }
+                }
+                else // 리버스 모드
+                {
+                    if (theta > -PI) {
+                        vertex4[currentvertexcnt[3]][0] = vertex4[0][0] + 0.25f + Sp_radius * cos(theta);
+                        vertex4[currentvertexcnt[3]][1] = vertex4[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[3]++;
+                    }
+                }
+            }
+            if (limitspiral == 5)
+            {
+                if (!reverse[4]) {
 
-                break;
-            case 4:
-
-                break;
-            case 5:
-
-                break;
-            default:
-                break;
+                    if (theta < PI * 6) {
+                        vertex5[currentvertexcnt[4]][0] = vertex5[0][0] + Sp_radius * cos(theta);
+                        vertex5[currentvertexcnt[4]][1] = vertex5[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[4]++;
+                    }
+                    else {
+                        reverse[4] = true;
+                    }
+                }
+                else // 리버스 모드
+                {
+                    if (theta > -PI) {
+                        vertex5[currentvertexcnt[4]][0] = vertex5[0][0] + 0.25f + Sp_radius * cos(theta);
+                        vertex5[currentvertexcnt[4]][1] = vertex5[0][1] + Sp_radius * sin(theta);
+                        currentvertexcnt[4]++;
+                    }
+                }
             }
 
-        
+        }
         break;
     }
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
@@ -296,7 +372,6 @@ void Mouse(int button, int state, int x, int y) {
 
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
     {
-        glutTimerFunc(100, Timer, 0);
         Sp_radius = 0.0f;
         theta = 0.0f;
         xpos = (static_cast<float>(x) / (ROW / 2.0f)) - 1.0f; // OpenGL 좌표로 변환
@@ -315,7 +390,26 @@ void Mouse(int button, int state, int x, int y) {
     // 화면을 다시 그리도록 요청
     glutPostRedisplay();
 }
+void init_rnd_position(GLfloat vertex[2 * Max_vertex][3]) {
+    
+    if (rand() % 2)
+    {
+        vertex[0][0] = static_cast<float>(rand()) / RAND_MAX;
+    }
+    else
+    {
+        vertex[0][0] = -static_cast<float>(rand()) / RAND_MAX;
+    }
+    if (rand() % 2)
+    {
+        vertex[0][1] = static_cast<float>(rand()) / RAND_MAX;
+    }
+    else
+    {
+        vertex[0][1] = -static_cast<float>(rand()) / RAND_MAX;
+    }
 
+}
 // 키보드 입력 이벤트 콜백 함수
 GLvoid Keyboard(unsigned char key, int x, int y) {
 
@@ -327,19 +421,44 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
         mode_line = true;
         break;
     case '1':
-
+        init_figure();
+        InitBuffer();
+        limitspiral = 1;
+        init_rnd_position(vertex1);
         break;
     case '2':
-
+        init_figure();
+        InitBuffer();
+        limitspiral = 2;
+        init_rnd_position(vertex1);
+        init_rnd_position(vertex2);
         break;
     case '3':
-
+        init_figure();
+        InitBuffer();
+        limitspiral = 3;
+        init_rnd_position(vertex1);
+        init_rnd_position(vertex2);
+        init_rnd_position(vertex3);
         break;
     case '4':
-
+        init_figure();
+        InitBuffer();
+        limitspiral = 4;
+        init_rnd_position(vertex1);
+        init_rnd_position(vertex2);
+        init_rnd_position(vertex3);
+        init_rnd_position(vertex4);
         break;
     case '5':
-
+        init_figure();
+        InitBuffer();
+        limitspiral = 5;
+        init_rnd_position(vertex1);
+        init_rnd_position(vertex2);
+        init_rnd_position(vertex3);
+        init_rnd_position(vertex4);
+        init_rnd_position(vertex5);
         break;
     }
 
