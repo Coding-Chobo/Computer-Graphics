@@ -10,7 +10,7 @@
 #include <math.h>
 
 #define Max 5
-#define Max_vertex  216
+#define Max_vertex  216 //432
 #define ROW 1000
 #define COL 1000
 #define PI 3.141592653589793238
@@ -39,7 +39,7 @@ GLfloat rect_sprialgap[4]{ 0.0f };
 float theta{};
 int step[Max]{};
 bool reverse[Max]{};
-bool canmake{ true };
+bool canmake[5]{ true };
 //----------------------------- 함수 선언 -------------------------------------
 void init_color();
 void make_vertexShaders();
@@ -71,9 +71,9 @@ void init_color() {
     // 각 도형의 색상 값을 초기화
     for (int i = 0; i < 10 * Max_vertex; ++i) {
         for (int j = 0; j < 3; ++j) {
-            colors[i][j][0] = static_cast<float>(rand()) / RAND_MAX;
-            colors[i][j][1] = static_cast<float>(rand()) / RAND_MAX;
-            colors[i][j][2] = static_cast<float>(rand()) / RAND_MAX;
+            colors[i][j][0] = 1.0f;
+            colors[i][j][1] = 1.0f;
+            colors[i][j][2] = 1.0f;
         }
     }
 }
@@ -85,17 +85,14 @@ void init_figure() {
         currentvertexcnt[i] = 0;
         reverse[i] = false;
     }
-    for (int i = 0; i < 2 * Max_vertex; i++)
-    {
-        vertex1[i][2] = 0.0f;
-        vertex2[i][2] = 0.0f;
-        vertex3[i][2] = 0.0f;
-        vertex4[i][2] = 0.0f;
-        vertex5[i][2] = 0.0f;
-    }
+    ZeroMemory(vertex1, sizeof(vertex1));
+    ZeroMemory(vertex2, sizeof(vertex2));
+    ZeroMemory(vertex3, sizeof(vertex3));
+    ZeroMemory(vertex4, sizeof(vertex4));
+    ZeroMemory(vertex5, sizeof(vertex5));
     theta = 0.0f;
     Sp_radius = 0.0f;
-    canmake = true;
+    
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
 
@@ -123,7 +120,7 @@ void main(int argc, char** argv) {
     make_fragmentShaders(); // 프래그먼트 셰이더 생성
     shaderProgramID = make_shaderProgram(); // 셰이더 프로그램 생성
     // 콜백 함수 등록
-    glutTimerFunc(300, Timer, 0);
+    glutTimerFunc(50, Timer, 0);
     glutDisplayFunc(drawScene);
     glutReshapeFunc(Reshape);
     glutMouseFunc(Mouse);
@@ -153,14 +150,14 @@ void InitBuffer() {
 
     // 정점 좌표 데이터를 VBO에 복사
     glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4) + sizeof(vertex5), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4) + sizeof(vertex5), vertex1, GL_DYNAMIC_DRAW);
 
     // 모든 vertex 데이터를 하나의 VBO에 결합하여 전달
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertex1), vertex1);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1), sizeof(vertex2), vertex2);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2), sizeof(vertex3), vertex3);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3), sizeof(vertex4), vertex4);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4), sizeof(vertex5), vertex5);
+    glBufferSubData(GL_ARRAY_BUFFER, 3 * sizeof(vertex1),  sizeof(vertex2), vertex2);
+    glBufferSubData(GL_ARRAY_BUFFER, 3 * (sizeof(vertex1) + sizeof(vertex2)), sizeof(vertex3), vertex3);
+    glBufferSubData(GL_ARRAY_BUFFER, 3 * (sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3)), sizeof(vertex4), vertex4);
+    glBufferSubData(GL_ARRAY_BUFFER, 3 * (sizeof(vertex1) + sizeof(vertex2) + sizeof(vertex3) + sizeof(vertex4)), sizeof(vertex5), vertex5);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
@@ -211,19 +208,18 @@ GLvoid drawScene() {
 
     if (!mode_line) {  // 점으로 그리기
         for (int i = 0; i < limitspiral; i++) {
-            glDrawArrays(GL_POINTS, offset, currentvertexcnt[i]);  // 각 스파이럴 그리기
             offset += currentvertexcnt[i];  // 다음 스파이럴의 시작 위치로 오프셋을 증가
         }
+        glDrawArrays(GL_POINTS, 1, 2  * offset);
     }
     else {  // 선으로 그리기
         offset = 0;
         for (int i = 0; i < limitspiral; i++) {
              offset += currentvertexcnt[i];  // 다음 스파이럴의 시작 위치로 오프셋을 증가
         }
-        glDrawArrays(GL_LINE_STRIP, 0, offset-5);  // 각 스파이럴을 선으로 그리기
-
+        glDrawArrays(GL_LINE_STRIP, 1, 2 * offset);  // 각 스파이럴을 선으로 그리기
     }
-
+    std::cout << offset << std::endl;
     glutSwapBuffers();  // 화면에 출력
 }
 
@@ -240,12 +236,13 @@ void Timer(int value) {
     switch (value)
     {
     case 0: // 원 스파이럴
-        if (canmake)
-        {
+            
+            
+            //1번 스파이럴
             if (!reverse[0]) {
 
                 if (theta < PI * 6) {
-                    std::cout << currentvertexcnt[1] << std::endl;
+                    std::cout << currentvertexcnt[2] << std::endl;
                     vertex1[currentvertexcnt[0]][0] = vertex1[0][0] + Sp_radius * cos(theta);
                     vertex1[currentvertexcnt[0]][1] = vertex1[0][1] + Sp_radius * sin(theta);
                     theta += 0.15;
@@ -267,6 +264,7 @@ void Timer(int value) {
                     currentvertexcnt[0]++;
                 }
             }
+            //2번 스파이럴
             if (limitspiral >= 2)
             {
                 if (!reverse[1]) {
@@ -289,6 +287,7 @@ void Timer(int value) {
                     }
                 }
             }
+            //3번 스파이럴
             if (limitspiral >= 3)
             {
                 if (!reverse[2]) {
@@ -311,6 +310,7 @@ void Timer(int value) {
                     }
                 }
             }
+            //4번 스파이럴
             if (limitspiral >= 4)
             {
                 if (!reverse[3]) {
@@ -333,6 +333,7 @@ void Timer(int value) {
                     }
                 }
             }
+            //5번 스파이럴
             if (limitspiral == 5)
             {
                 if (!reverse[4]) {
@@ -356,7 +357,7 @@ void Timer(int value) {
                 }
             }
 
-        }
+        
         break;
     }
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
@@ -364,7 +365,7 @@ void Timer(int value) {
 
     // 화면을 다시 그리도록 요청
     glutPostRedisplay();
-    glutTimerFunc(100, Timer, value);
+    glutTimerFunc(10, Timer, value);
 }
 
 // 마우스 클릭 이벤트 콜백 함수
