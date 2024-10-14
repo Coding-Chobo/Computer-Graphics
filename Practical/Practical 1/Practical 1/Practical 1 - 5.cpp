@@ -191,10 +191,7 @@ void Motion(int x, int y) {
             }
         }
         // 마우스 위치 업데이트
-        previousMouseX = xpos;
-        previousMouseY = ypos;
-
-        glutPostRedisplay(); // 화면 갱신
+c
     }
     else if (eraser.is_surv)
     {
