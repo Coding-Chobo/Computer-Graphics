@@ -10,7 +10,7 @@ int direction1[4]{};
 int direction2[4]{};
 int theta{};
 bool mode[4]{};
-int selectedBlock{};
+int selectedBlock{-1};
 vector<Vertex>vertex{};
 vector<Color>colors{};
 vector<Figure> info{};
@@ -40,6 +40,7 @@ void main(int argc, char** argv) {
     make_fragmentShaders(); // 프래그먼트 셰이더 생성
     shaderProgramID = make_shaderProgram(); // 셰이더 프로그램 생성
     init_figure();
+    glutTimerFunc(100, Timer, 0);
     // 콜백 함수 등록
     glutDisplayFunc(drawScene);
     glutReshapeFunc(Reshape);
@@ -68,7 +69,6 @@ void init_figure() {
     Make_Penta(0);
     Make_Penta(0);
     Make_Penta(0);
-
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
 
@@ -85,47 +85,55 @@ GLvoid drawScene() {
     glUseProgram(shaderProgramID); // 셰이더 프로그램 사용
 
     glBindVertexArray(vao); // VAO 바인딩
-    std::cout << "도형을 그리고 있습니다." << std::endl;
+    std::cout << "도형의 갯수 : "<< info.size() << std::endl;
     // 도형 그리기: 각 도형의 정점 개수에 따라 다르게 그려야 함
     int offset = 0;
-    for (int i = 0; i < Max; i++)
+    for (int i = 0; i < info.size(); i++)
     {
-        if (info.at(i).is_active) {
-            switch (info.at(i).shape-1)
-            {
-            case 0://점 그리기(작은 삼각형)
+        switch (info.at(i).shape)
+        {
+        case 1://점 그리기(작은 삼각형)
+            if (info.at(i).is_active) {
                 glDrawArrays(GL_TRIANGLES, offset, 3); // 삼각형: 3개의 정점
-                offset += 3;
-                break;
-            case 1: //선 그리기
+            }
+            offset += 3;
+            break;
+        case 2: //선 그리기
+            if (info.at(i).is_active) {
                 glDrawArrays(GL_LINES, offset, 2); // 삼각형: 3개의 정점
-                offset += 2;
-                break;
-            case 2:// 삼각형 그리기
+            }
+            offset += 2;
+            break;
+        case 3:// 삼각형 그리기
+            if (info.at(i).is_active) {
                 glDrawArrays(GL_TRIANGLES, offset, 3); // 삼각형: 3개의 정점
-                offset += 3;
-                break;
-            case 3: // 사각형 그리기
+            }
+            offset += 3;
+            break;
+        case 4: // 사각형 그리기
+            if (info.at(i).is_active) {
                 for (int j = 0; j < 2; j++)
                 {
-                    glDrawArrays(GL_TRIANGLES, offset + j, 3); // 삼각형: 3개의 정점   
+                    glDrawArrays(GL_TRIANGLES, offset + j, 3); // 삼각형: 3개의 정점 
                 }
-                offset += 4;
-                break;
-            case 4: // 오각형 그리기
+            }
+            offset += 4;
+            break;
+        case 5: // 오각형 그리기
+            if (info.at(i).is_active) {
                 for (int j = 0; j < 3; j++)
                 {
                     glDrawArrays(GL_TRIANGLES, offset + j, 3); // 삼각형: 3개의 정점
                 }
-                offset += 5;
-                break;
-            default:
-                break;
             }
-         }
+            offset += 5;
+            break;
+        default:
+            break;
+        }
+         
     }
 
-    std::cout << "도형의 버텍스의 갯수" << colors.size() << std::endl;
     glutSwapBuffers(); // 화면에 출력
 }
 
@@ -133,20 +141,6 @@ GLvoid drawScene() {
 GLvoid Reshape(int w, int h) {
     glViewport(0, 0, w, h);
 }
-
-//타이머 함수
-void Timer(int value) {
-    float moving_gap = 0.05f;
-    float spiral_gap = 0.01f;
-
-    // VBO 데이터를 업데이트하여 GPU에 다시 전송
-    UpdateVBO();
-
-    // 화면을 다시 그리도록 요청
-    glutPostRedisplay();
-    glutTimerFunc(100, Timer, value);
-}
-
 // 색상 초기화 함수
 void init_color(int shape) {
     float r = static_cast<float>(rand()) / RAND_MAX;
@@ -158,6 +152,163 @@ void init_color(int shape) {
     }
 }
 
+//타이머 함수
+void Timer(int value) {
+    float moving_gap = 0.05f;
+    if (info.size() > 15)
+    {
+        int start_index = 51;
+        for (int i = 15; i < info.size(); i++)
+        {
+            if (info.at(i).shape != 1)
+            {
+                bool change_dir[2] = {};
+                if (selectedBlock != i && info.at(i).is_active)
+                {
+                    for (int j = 0; j < info.at(i).shape; j++)
+                    {
+                        switch (info.at(i).dir1)
+                        {
+                        case 0: // 좌
+                            vertex.at(j + start_index).x -= moving_gap;
+                            if (vertex.at(j + start_index).x < -1.0f)
+                            {
+                                change_dir[0] = true;
+                            }
+                            break;
+                        case 1: // 우
+                            vertex.at(j + start_index).x += moving_gap;
+                            if (vertex.at(j + start_index).x > 1.0f)
+                            {
+                                change_dir[0] = true;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                        switch (info.at(i).dir2)
+                        {
+                        case 0: // 하
+                            vertex.at(j + start_index).y -= moving_gap;
+                            if (vertex.at(j + start_index).y < -1.0f)
+                            {
+                                change_dir[1] = true;
+                            }
+                            break;
+                        case 1: // 상
+                            vertex.at(j + start_index).y += moving_gap;
+                            if (vertex.at(j + start_index).y > 1.0f)
+                            {
+                                change_dir[1] = true;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    if (change_dir[0])
+                    {
+                        info.at(i).dir1 = (info.at(i).dir1 + 1) % 2;
+                    }
+                    if (change_dir[1])
+                    {
+                        info.at(i).dir2 = (info.at(i).dir2 + 1) % 2;
+                    }
+                }
+                start_index += info.at(i).shape;
+            }
+            else
+            {    
+                bool change_dir[2] = {};
+                if (selectedBlock != i && info.at(i).is_active)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        switch (info.at(i).dir1)
+                        {
+                        case 0: // 좌
+                            vertex.at(j + start_index).x -= moving_gap;
+                            if (vertex.at(j + start_index).x < -1.0f)
+                            {
+                                change_dir[0] = true;
+                            }
+                            break;
+                        case 1: // 우
+                            vertex.at(j + start_index).x += moving_gap;
+                            if (vertex.at(j + start_index).x > 1.0f)
+                            {
+                                change_dir[0] = true;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                        switch (info.at(i).dir2)
+                        {
+                        case 0: // 하
+                            vertex.at(j + start_index).y -= moving_gap;
+                            if (vertex.at(j + start_index).y < -1.0f)
+                            {
+                                change_dir[1] = true;
+                            }
+                            break;
+                        case 1: // 상
+                            vertex.at(j + start_index).y += moving_gap;
+                            if (vertex.at(j + start_index).y > 1.0f)
+                            {
+                                change_dir[1] = true;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    if (change_dir[0])
+                    {
+                        info.at(i).dir1 = (info.at(i).dir1 + 1) % 2;
+                    }
+                    if (change_dir[1])
+                    {
+                        info.at(i).dir2 = (info.at(i).dir2 + 1) % 2;
+                    }
+                }
+                start_index += 3;
+            }
+            switch (info.at(i).dir1)
+            {
+            case 0: // 좌
+                info.at(i).checkbox.left -= moving_gap;
+                info.at(i).checkbox.right -= moving_gap;
+                break;
+            case 1: // 우
+                info.at(i).checkbox.left += moving_gap;
+                info.at(i).checkbox.right += moving_gap;
+                break;
+            }
+            switch (info.at(i).dir2)
+            {
+            case 0: // 하
+                info.at(i).checkbox.top -= moving_gap;
+                info.at(i).checkbox.bottom -= moving_gap;
+                break;
+            case 1: // 상
+                info.at(i).checkbox.top += moving_gap;
+                info.at(i).checkbox.bottom += moving_gap;
+                break;
+            }
+            
+        }
+    }
+
+
+    // VBO 데이터를 업데이트하여 GPU에 다시 전송
+    UpdateVBO();
+
+    // 화면을 다시 그리도록 요청
+    glutPostRedisplay();
+    glutTimerFunc(100, Timer, value);
+}
+
 //마우스 클릭 이벤트 콜백 함수
 void Mouse(int button, int state, int x, int y) {
     // OpenGL 좌표로 변환 (화면의 크기를 고려)
@@ -165,13 +316,61 @@ void Mouse(int button, int state, int x, int y) {
     float ypos = 1.0f - (static_cast<float>(y) / (COL / 2.0f));
 
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        for (int i = Max - 1; i >= 0; i--) {
-            if ((xpos > info.at(i).checkbox.left) && (xpos < info.at(i).checkbox.right) && (ypos > info.at(i).checkbox.bottom) && (ypos < info.at(i).checkbox.top)) {
-                selectedBlock = i;
-                previousMouseX = xpos;
-                previousMouseY = ypos;
+        std::cout << "Info의 갯수" << info.size() << std::endl;
+        for (int i = info.size() - 1; i >= 0; i--) {
+            if (info.at(i).is_active)
+            {
+                BoundingBox& rect = info.at(i).checkbox;
+                if ((xpos > rect.left) && (xpos < rect.right) && (ypos > rect.bottom) && (ypos < rect.top)) {
+                    selectedBlock = i;
+                    previousMouseX = xpos;
+                    previousMouseY = ypos;
+                    break;
+                }
             }
         }
+    }
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_UP && selectedBlock != -1)
+    {
+        for (int i = info.size() - 1; i >= 0; i--)
+        {
+            if (info.at(i).is_active&&IsRectOverlap(info.at(selectedBlock).checkbox, info.at(i).checkbox) && i!= selectedBlock)
+            {
+                int newshape = (info.at(i).shape + info.at(selectedBlock).shape);
+                if (newshape % 5 != 0)
+                {
+                    newshape %= 5;
+                }
+                else
+                {
+                    newshape = 5;
+                }
+                switch (newshape)
+                {
+                case 1:
+                    Make_triangle(1);
+                    break;
+                case 2:
+                    Make_Line(0);
+                    break;
+                case 3:
+                    Make_triangle(0);
+                    break;
+                case 4:
+                    Make_Rect(0);
+                    break;
+                case 5:
+                    Make_Penta(0);
+                    break;
+                default:
+                    break;
+                }
+                info.at(selectedBlock).is_active = false;
+                info.at(i).is_active = false;
+                break;
+            }
+        }
+        selectedBlock = -1;
     }
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
@@ -179,9 +378,10 @@ void Mouse(int button, int state, int x, int y) {
     // 화면을 다시 그리도록 요청
     glutPostRedisplay();
 }
+
+//마우스 모션검사(클릭중Active)
 void Motion(int x, int y) {
-    std::cout << selectedBlock << std::endl;
-    if (selectedBlock < Max) { // 선택된 블록이 있을 때만 동작
+    if (selectedBlock != -1) {  // 선택된 블록이 있을 때만 동작
         // OpenGL 좌표로 변환
         float xpos = static_cast<float>(x) / (ROW / 2.0f) - 1.0f;
         float ypos = 1.0f - static_cast<float>(y) / (COL / 2.0f);
@@ -189,57 +389,53 @@ void Motion(int x, int y) {
         // 마우스 이동량 계산
         float deltaX = xpos - previousMouseX;
         float deltaY = ypos - previousMouseY;
+
+        // 선택된 도형의 checkbox 좌표를 업데이트
         info.at(selectedBlock).checkbox.left += deltaX;
         info.at(selectedBlock).checkbox.right += deltaX;
         info.at(selectedBlock).checkbox.top += deltaY;
         info.at(selectedBlock).checkbox.bottom += deltaY;
-        int offset{};
-        for (int i = 0; i < Max; i++)
-        {
-            if (info.at(i).is_active)
-            {
+
+        // 선택된 도형의 vertex 좌표를 업데이트
+        int offset = 0;
+        for (int i = 0; i < selectedBlock; i++) {
+            
                 if (info.at(i).shape == 1)
                 {
-                    offset += 3;
+                    offset += info.at(i).shape * 3;
                 }
                 else
                 {
                     offset += info.at(i).shape;
                 }
-            }
+            
         }
-        
-        for (int i = 0; i < Max; i++)
-        {
-            if (info.at(i).shape == 1)
-            {
-                vertex.at(offset).x += deltaX;
-                vertex.at(offset).y += deltaY;
-                vertex.at(offset+1).x += deltaX;
-                vertex.at(offset+1).y += deltaY;
-                vertex.at(offset+2).x += deltaX;
-                vertex.at(offset+2).y += deltaY;
-            }
-            else
-            {
-                for (int j = 0; j < info.at(i).shape; j++)
-                {
-                    vertex.at(offset + j).x += deltaX;
-                    vertex.at(offset + j).y += deltaY;
-                }
-            }
-        }
-        vertex.at(offset).x += deltaX;
-        vertex.at(offset).y += deltaY;
-    }
-    previousMouseX = xpos;
-    previousMouseY = ypos;
-    // VBO 데이터를 업데이트하여 GPU에 다시 전송
-    UpdateVBO();
 
-    // 화면을 다시 그리도록 요청
-    glutPostRedisplay();
+        if (info.at(selectedBlock).shape == 1)
+        {
+            for (int j = 0; j < 3; j++) {
+                vertex.at(offset + j).x += deltaX;
+                vertex.at(offset + j).y += deltaY;
+            }
+        }
+        else
+        {
+            for (int j = 0; j < info.at(selectedBlock).shape; j++) {
+                vertex.at(offset + j).x += deltaX;
+                vertex.at(offset + j).y += deltaY;
+            }
+        }
+        previousMouseX = xpos;
+        previousMouseY = ypos;
+
+        // VBO 데이터를 업데이트하여 GPU에 다시 전송
+        UpdateVBO();
+
+        // 화면을 다시 그리도록 요청
+        glutPostRedisplay();
+    }
 }
+
 // 키보드 입력 이벤트 콜백 함수
 GLvoid Keyboard(unsigned char key, int x, int y) {
     switch (key) {
@@ -254,7 +450,9 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
     // 화면을 다시 그리도록 요청
     glutPostRedisplay();
 }
-bool IsRectOverlap(RECT rect1, RECT rect2) {
+
+//사각형 충돌검사
+bool IsRectOverlap(BoundingBox rect1, BoundingBox rect2) {
     if (rect1.right <= rect2.left || rect1.left >= rect2.right) {
         return false;
     }
@@ -264,6 +462,7 @@ bool IsRectOverlap(RECT rect1, RECT rect2) {
     // 두 축 모두에서 겹친다면 충돌이 발생한 것
     return true;
 }
+
 //선분 생성
 void Make_Line(int mode) {
     float rnd_x = static_cast<float>(rand()) / RAND_MAX;
@@ -277,7 +476,13 @@ void Make_Line(int mode) {
         rnd_y = -rnd_y;
     }
     radius = static_cast<float>(rand()) / RAND_MAX / 5;
-    info.emplace_back(Figure{ 2, true,{ static_cast<LONG>(rnd_x - radius / 3), static_cast<LONG>(rnd_y + radius / 4), static_cast<LONG>(rnd_x + radius / 3), static_cast<LONG>(rnd_y - radius / 3) } });
+    BoundingBox bbox = {
+    rnd_x - radius / 3.0f,
+    rnd_y + radius / 3.0f,
+    rnd_x + radius / 3.0f,
+    rnd_y - radius / 3.0f
+    };
+    info.emplace_back(Figure{ 2, true, bbox,rand()%2,rand() % 2 });
     vertex.emplace_back(Vertex{ rnd_x - radius,rnd_y + radius,0.0f });
     vertex.emplace_back(Vertex{ rnd_x + radius,rnd_y - radius,0.0f });
     init_color(2);
@@ -297,23 +502,38 @@ void Make_triangle(int size) {
     }
     if (size == 0) // random size
     {
-        radius = static_cast<float>(rand()) / RAND_MAX / 4 + 0.05f;
-        info.emplace_back(Figure{ 3, true,{ static_cast<LONG>(rnd_x - radius / 4), static_cast<LONG>(rnd_y + radius / 4), static_cast<LONG>(rnd_x + radius / 4), static_cast<LONG>(rnd_y - radius / 4) } });
+        radius = static_cast<float>(rand()) / RAND_MAX / 4 + 0.05f;        
     }
     else if (size == 1) // point size
     {
         radius = 0.03f;
-        info.emplace_back(Figure{ 1, true,{ static_cast<LONG>(rnd_x - radius / 2), static_cast<LONG>(rnd_y + radius / 2), static_cast<LONG>(rnd_x + radius / 2), static_cast<LONG>(rnd_y - radius / 4) } });
     }
     else if (size == 2) // Middle size
     {
         radius = 0.15f;
     }
+    BoundingBox bbox = {
+        rnd_x - radius / 2.0f,
+        rnd_y + radius / 2.0f,
+        rnd_x + radius / 2.0f,
+        rnd_y - radius / 2.0f
+    };
+
+    if (size == 1) { // point size
+        info.emplace_back(Figure{ 1, true, bbox ,rand() % 2 ,rand() % 2 });
+    }
+    else
+    {
+        info.emplace_back(Figure{ 3, true, bbox ,rand() % 2 ,rand() % 2 });
+    }
+    
+    
     vertex.emplace_back(Vertex{ rnd_x, rnd_y + radius, 0.0f });
     vertex.emplace_back(Vertex{ rnd_x - radius * 0.85f, rnd_y - radius / 2.0f, 0.0f });
     vertex.emplace_back(Vertex{ rnd_x + radius * 0.85f, rnd_y - radius / 2.0f, 0.0f });
     init_color(3);
 }
+
 //사각형 만들기
 void Make_Rect(int mode) {
     float rnd_x = static_cast<float>(rand()) / RAND_MAX;
@@ -338,13 +558,20 @@ void Make_Rect(int mode) {
     {
         radius = 0.15f;
     }
-    info.emplace_back(Figure{ 4, true,{ static_cast<LONG>(rnd_x - radius / 4), static_cast<LONG>(rnd_y + radius / 4), static_cast<LONG>(rnd_x + radius / 4), static_cast<LONG>(rnd_y - radius / 4) } });
+    BoundingBox bbox = {
+        rnd_x - radius,
+        rnd_y + radius,
+        rnd_x + radius,
+        rnd_y - radius
+    };
+    info.emplace_back(Figure{ 4, true, bbox,rand() % 2 ,rand() % 2 });
     vertex.emplace_back(Vertex{ rnd_x + radius, rnd_y - radius, 0.0f });
     vertex.emplace_back(Vertex{ rnd_x - radius, rnd_y - radius, 0.0f });
     vertex.emplace_back(Vertex{ rnd_x + radius, rnd_y + radius, 0.0f });
     vertex.emplace_back(Vertex{ rnd_x - radius, rnd_y + radius, 0.0f });
     init_color(4);
 }
+
 //오각형 만들기
 void Make_Penta(int mode) {
     float rnd_x = static_cast<float>(rand()) / RAND_MAX;
@@ -371,7 +598,14 @@ void Make_Penta(int mode) {
     {
         radius = 0.15f;
     }
-    info.emplace_back(Figure{ 5, true,{ static_cast<LONG>(rnd_x - radius / 4), static_cast<LONG>(rnd_y + radius / 4), static_cast<LONG>(rnd_x + radius / 4), static_cast<LONG>(rnd_y - radius / 4) } });
+    BoundingBox bbox = {
+    rnd_x - radius * 0.61f,
+    rnd_y + radius * 0.61f,
+    rnd_x + radius * 0.61f,
+    rnd_y - radius * 0.61f
+    };
+    info.emplace_back(Figure{ 5, true, bbox,rand() % 2 ,rand() % 2 });
+
     vertex.emplace_back(Vertex{ rnd_x + radius * cos(glm::radians(theta)), rnd_y + radius * sin(glm::radians(theta)), 0.0f });
     theta += 72.0f;
     vertex.emplace_back(Vertex{ rnd_x + radius * cos(glm::radians(theta)), rnd_y + radius * sin(glm::radians(theta)), 0.0f });
@@ -383,10 +617,6 @@ void Make_Penta(int mode) {
     vertex.emplace_back(Vertex{ rnd_x + radius * cos(glm::radians(theta)), rnd_y + radius * sin(glm::radians(theta)), 0.0f });
     init_color(5);
 }
-
-
-
-
 
 // VAO 및 VBO 초기화
 void InitBuffer() {
@@ -434,8 +664,6 @@ void UpdateVBO() {
 
     glBindVertexArray(0);  // VAO 바인딩 해제
 }
-
-
 
 // 셰이더 프로그램 생성 함수
 GLuint make_shaderProgram() {

@@ -27,9 +27,20 @@ struct BoundingBox {
 };
 struct Vertex {
     float x, y, z;
-};
-struct Color {
     float r, g, b;
+};
+struct Index
+{
+    int v1;
+    int v2;
+    int v3;
+};
+struct Box {
+    vector<Vertex>vertex;
+    vector<Index>indexlist;
+    GLuint VAO;
+    GLuint VBO[2];
+    GLuint EBO;
 };
 struct Figure {
     int shape;
@@ -54,11 +65,10 @@ void Motion(int x, int y);
 GLvoid drawScene();
 GLvoid Reshape(int w, int h);
 
-bool IsRectOverlap(BoundingBox rect1, BoundingBox rect2);
+void UpdateVBO(Box box);
 void init_color(int shape);
 void init_figure();
 void UpdateVBO();
-void Make_Line(int mode);
+void Make_cube(float x, float y, float z,float size);
 void Make_triangle(int size);
 void Make_Rect(int mode);
-void Make_Penta(int mode);
