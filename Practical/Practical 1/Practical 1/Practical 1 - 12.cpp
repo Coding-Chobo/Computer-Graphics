@@ -54,21 +54,7 @@ void main(int argc, char** argv) {
 
 //도형값 초기화
 void init_figure() {
-    Make_triangle(1);
-    Make_triangle(1);
-    Make_triangle(1);
-    Make_Line(0);
-    Make_Line(0);
-    Make_Line(0);
-    Make_triangle(0);
-    Make_triangle(0);
-    Make_triangle(0);
-    Make_Rect(0);
-    Make_Rect(0);
-    Make_Rect(0);
-    Make_Penta(0);
-    Make_Penta(0);
-    Make_Penta(0);
+    
     // VBO 데이터를 업데이트하여 GPU에 다시 전송
     UpdateVBO();
 

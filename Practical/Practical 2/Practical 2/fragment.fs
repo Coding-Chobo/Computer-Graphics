@@ -1,10 +1,9 @@
 #version 330 core
-//--- out_Color: 버텍스 세이더에서 입력받는 색상 값FragColor
-//--- FragColor: 출력할 색상의 값으로 프레임 버퍼로 전달 됨. 
-in vec3 out_Color; //--- 버텍스 세이더에게서 전달 받음
-out vec4 FragColor; //--- 색상 출력
-void main(void) 
+
+out vec4 Fragcolor;
+in vec3 outColor;
+
+void main()
 {
-	FragColor = vec4 (out_Color, 1.0);
+	Fragcolor = vec4(outColor.r, outColor.g, outColor.b, 1.0);
 }
-	

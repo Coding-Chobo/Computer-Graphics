@@ -49,7 +49,7 @@ GLvoid Render()
 	//좌표계 그리기
 	Draw_Coordinate(Coordinate_system);
 	//큐브그리기
-	DrawCube(0.0f,0.0f,0.0f,0.5f,cube);
+	DrawCube(0.0f, 0.0f, 0.0f, 0.5f, cube);
 
 	glutSwapBuffers();
 }
@@ -184,27 +184,27 @@ void DrawCube(float x, float y, float z, float size, Object obj) {
 }
 
 GLvoid UpdateVBO(Object object) {
-    // VAO 바인드
-    glBindVertexArray(object.vao);
+	// VAO 바인드
+	glBindVertexArray(object.vao);
 
-    // 큐브 위치 버퍼 바인드
-    glBindBuffer(GL_ARRAY_BUFFER, object.vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, object.vertex.size() * sizeof(glm::vec3), object.vertex.data(), GL_DYNAMIC_DRAW);
+	// 큐브 위치 버퍼 바인드
+	glBindBuffer(GL_ARRAY_BUFFER, object.vbo[0]);
+	glBufferData(GL_ARRAY_BUFFER, object.vertex.size() * sizeof(glm::vec3), object.vertex.data(), GL_DYNAMIC_DRAW);
 
-    // 큐브 인덱스 버퍼 바인드
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.EBO);
-    // 전체 인덱스 배열의 크기 전달
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, object.indexlist.size() * sizeof(Index), object.indexlist.data(), GL_DYNAMIC_DRAW);
+	// 큐브 인덱스 버퍼 바인드
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.EBO);
+	// 전체 인덱스 배열의 크기 전달
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, object.indexlist.size() * sizeof(Index), object.indexlist.data(), GL_DYNAMIC_DRAW);
 
-    // 위치 속성 설정
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glEnableVertexAttribArray(0);
+	// 위치 속성 설정
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+	glEnableVertexAttribArray(0);
 
-    // 큐브 색상 버퍼 바인드
-    glBindBuffer(GL_ARRAY_BUFFER, object.vbo[1]);
-    glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glEnableVertexAttribArray(1);
+	// 큐브 색상 버퍼 바인드
+	glBindBuffer(GL_ARRAY_BUFFER, object.vbo[1]);
+	glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+	glEnableVertexAttribArray(1);
 }
 
 GLvoid UpdateVBO(Coordinate object) {
