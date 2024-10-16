@@ -1,17 +1,15 @@
-    #version 330 core
-    layout(location = 0) in vec3 aPos;
-    layout(location = 1) in vec3 aNormal;
+#version 330 core
 
-    out vec3 FragPos;
-    out vec3 Normal;
+//--- in_Position: attribute index 0 
+//--- in_Color: attribute index 1
 
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
+layout (location = 0) in vec3 in_Position; //--- 위치 변수: attribute position 0
+layout (location = 1) in vec3 in_Color; //--- 컬러 변수: attribute position 1
 
-    void main() {
-        FragPos = vec3(model * vec4(aPos, 1.0));
-        Normal = mat3(transpose(inverse(model))) * aNormal;
+uniform mat4 transform;
 
-        gl_Position = projection * view * vec4(FragPos, 1.0);
-    }
+void main(void) 
+{
+gl_Position = transㄹorm * vec4 (in_Position.x, in_Position.y, in_Position.z, 1.0);
+out_Color = in_Color;
+}

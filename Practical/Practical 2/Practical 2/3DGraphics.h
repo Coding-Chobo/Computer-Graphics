@@ -14,6 +14,7 @@
 #include <gl/glm/ext.hpp>
 #include <gl/glm/gtc/matrix_transform.hpp>
 
+
 //--------------------------------define--------------------------------
 using std::vector;
 #define ROW 1000
@@ -57,6 +58,8 @@ void make_fragmentShaders();
 GLuint make_shaderProgram();
 void InitBuffer();
 char* filetobuf(const char* file);
+void UpdateVBO(Box box);
+void UpdateVBO();
 
 GLvoid Keyboard(unsigned char key, int x, int y);
 void Timer(int value); // 타이머 콜백 함수
@@ -65,10 +68,8 @@ void Motion(int x, int y);
 GLvoid drawScene();
 GLvoid Reshape(int w, int h);
 
-void UpdateVBO(Box box);
+
 void init_color(int shape);
 void init_figure();
 void UpdateVBO();
 void Make_cube(float x, float y, float z,float size);
-void Make_triangle(int size);
-void Make_Rect(int mode);
