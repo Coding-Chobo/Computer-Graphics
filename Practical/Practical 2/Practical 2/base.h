@@ -41,9 +41,9 @@ struct Coordinate {
     GLuint vbo[2];
     GLuint EBO;
 };
-    //------------`
-void Draw_Cube(float x, float y, float z, float size, Object cube);
-void Draw_Tetra(float x, float y, float z, float size, Object cube);
+//----------------------------- 함수 선언 -------------------------------------
+
+void DrawCube(float x, float y, float z, float size, Object cube);
 void Draw_Coordinate(Coordinate obj);
 
 GLvoid InitBuffer();
