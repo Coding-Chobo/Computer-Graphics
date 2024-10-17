@@ -5,8 +5,8 @@
 #include <ctime>
 #include <cstdlib> // rand() 함수를 사용하기 위해 추가
 
-#define COL 600
-#define ROW 800
+#define COL 1200
+#define ROW 1200
 GLvoid drawScene(GLvoid);
 GLvoid Reshape(int w, int h);
 GLvoid Keyboard(unsigned char key, int x, int y);
