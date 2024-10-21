@@ -42,8 +42,8 @@ struct Coordinate {
     GLuint EBO;
 };
     //------------`
-void Draw_Cube(float x, float y, float z, float size, Object cube);
-void Draw_Tetra(float x, float y, float z, float size, Object cube);
+void Draw_Cube(float x, float y, float z, float size, Object obj);
+void Draw_Tetra(float x, float y, float z, float size, Object obj);
 void Draw_Coordinate(Coordinate obj);
 
 GLvoid InitBuffer();
@@ -59,3 +59,5 @@ GLint CreateShader(const char* file, int type);
 GLvoid CreateShaderProgram();
 GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
+
+void init_figure();

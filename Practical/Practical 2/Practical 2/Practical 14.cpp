@@ -9,17 +9,14 @@ GLchar* vertexSource, * fragmentSource; // 소스코드 저장 변수
 GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
-Object cube{};
-Object tetra{};
+Object cube{}, tetra{};
 Coordinate Coordinate_system{};
 
-bool which_figure{};
-bool mode[2]{};
-unsigned int which_face{};
-unsigned int which_face2{};
+
+
+
 void main(int argc, char** argv)
 {
-	srand(time(NULL));
 	// 윈도우 생성
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
@@ -30,21 +27,23 @@ void main(int argc, char** argv)
 	// GLEW 초기화하기
 	glewExperimental = GL_TRUE;
 	glewInit();
+	glutTimerFunc(100, Timer, 0);
+
 	//glEnable(GL_CULL_FACE);
 	//glEnable(GL_DEPTH_TEST);
-
+	
 	InitBuffer();
 
 	CreateShaderProgram();
-	//정보 입력함수
 
+	init_figure();
 	//리콜 함수
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
 	glutMotionFunc(Motion);
 	glutKeyboardFunc(Keyboard);
 	glutDisplayFunc(Render);
-	
+
 	glutMainLoop();
 }
 //그리는 함수
@@ -58,16 +57,7 @@ GLvoid Render()
 	//변환행렬 생성
 	Make_Matrix();
 
-	if (which_figure)
-	{
-		Draw_Tetra(0.0f, 0.0f, 0.0f, 0.5f, tetra);
-		
-	}
-	else
-	{
-		Draw_Cube(0.0f, 0.0f, 0.0f, 0.5f, cube);
-	}
-	
+	glDrawElements(GL_TRIANGLES, 3 * (tetra.indexlist.size() + cube.indexlist.size()), GL_UNSIGNED_INT, 0);
 
 	glutSwapBuffers();
 }
@@ -151,133 +141,37 @@ void Draw_Coordinate(Coordinate obj) {
 	glDisableVertexAttribArray(1);
 }
 
-void Draw_Cube(float x, float y, float z, float size, Object obj) {
-	obj.vertex.clear();
-	obj.color.clear();
-	obj.indexlist.clear();
+void DrawCube(float x, float y, float z, float size, Object obj) {
 
-	// 정점 추가
-	obj.vertex.emplace_back(glm::vec3{ x - size, y + size, z - size });
-	obj.vertex.emplace_back(glm::vec3{ x - size, y + size, z + size });
-	obj.vertex.emplace_back(glm::vec3{ x + size, y + size, z + size });
-	obj.vertex.emplace_back(glm::vec3{ x + size, y + size, z - size });
 
-	obj.vertex.emplace_back(glm::vec3{ x - size, y - size, z - size });
-	obj.vertex.emplace_back(glm::vec3{ x - size, y - size, z + size });
-	obj.vertex.emplace_back(glm::vec3{ x + size, y - size, z + size });
-	obj.vertex.emplace_back(glm::vec3{ x + size, y - size, z - size });
-
-	// 색상 추가
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
-	obj.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });
-	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 1.0f });
-
-	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 0.0f });
-	obj.color.emplace_back(glm::vec3{ 1.0f, 1.0f, 0.0f });
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
-	if (which_face == 1 || which_face2 == 1)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 1, 2 });
-		obj.indexlist.emplace_back(Index{ 0, 2, 3 });
-	}
-	if (which_face == 2 || which_face2 == 2)
-	{
-		obj.indexlist.emplace_back(Index{ 1, 5, 6 });
-		obj.indexlist.emplace_back(Index{ 1, 6, 2 });
-	}
-	if (which_face == 3 || which_face2 == 3)
-	{
-		obj.indexlist.emplace_back(Index{ 2, 6, 7 });
-		obj.indexlist.emplace_back(Index{ 2, 7, 3 });
-	}
-	if (which_face == 4 || which_face2 == 4)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 4, 5 });
-		obj.indexlist.emplace_back(Index{ 0, 5, 1 });
-	}
-	if (which_face == 5 || which_face2 == 5)
-	{
-		obj.indexlist.emplace_back(Index{ 5, 4, 6 });
-		obj.indexlist.emplace_back(Index{ 4, 7, 6 });
-	}
-	if (which_face == 6 || which_face2 == 6)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 7, 4 });
-		obj.indexlist.emplace_back(Index{ 0, 3, 7 });
-	}
 	// VBO 업데이트
 	UpdateVBO(obj);
-	glDrawElements(GL_TRIANGLES, 3 * obj.indexlist.size(), GL_UNSIGNED_INT, 0);
-	glutPostRedisplay();
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-}
 
-void Draw_Tetra(float x, float y, float z, float size, Object obj) {
-	obj.vertex.clear();
-	obj.color.clear();
-	obj.indexlist.clear();
-	float a = 0.85 * size;
-	// 정점 추가
-	obj.vertex.emplace_back(glm::vec3{ x, y + size, z });
-	obj.vertex.emplace_back(glm::vec3{ x, y - size / 2, z + a});
-	obj.vertex.emplace_back(glm::vec3{ x + 0.85 * a, y - size / 2, z - a / 2 });
-	obj.vertex.emplace_back(glm::vec3{ x - 0.85 * a, y - size / 2, z -a /2});
-
-	// 색상 추가
-	obj.color.emplace_back(glm::vec3{ 1.0f, 1.0f, 0.0f });
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
-	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 1.0f });
-	obj.color.emplace_back(glm::vec3{ 0.5f, 0.5f, 0.5f });
-
-	if (which_face == 7 || which_face2 == 7)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 1, 2 });
-	}
-	if (which_face == 8 || which_face2 == 2)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 2, 3 });
-	}
-	if (which_face == 9 || which_face2 == 9)
-	{
-		obj.indexlist.emplace_back(Index{ 0, 3, 1 });
-	}
-	if (which_face == 10 || which_face2 == 10)
-	{
-		obj.indexlist.emplace_back(Index{ 1, 2, 3 });
-	}
-	// VBO 업데이트
-	UpdateVBO(obj);
-	glDrawElements(GL_TRIANGLES, 3 * obj.indexlist.size(), GL_UNSIGNED_INT, 0);
-	glutPostRedisplay();
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
+	std::cout << "Index count: " << obj.indexlist.size() << std::endl;
 }
 
 GLvoid UpdateVBO(Object object) {
-    // VAO 바인드
-    glBindVertexArray(object.vao);
+	// VAO 바인드
+	glBindVertexArray(object.vao);
 
-    // 큐브 위치 버퍼 바인드
-    glBindBuffer(GL_ARRAY_BUFFER, object.vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, object.vertex.size() * sizeof(glm::vec3), object.vertex.data(), GL_DYNAMIC_DRAW);
+	// 큐브 위치 버퍼 바인드
+	glBindBuffer(GL_ARRAY_BUFFER, object.vbo[0]);
+	glBufferData(GL_ARRAY_BUFFER, object.vertex.size() * sizeof(glm::vec3), object.vertex.data(), GL_DYNAMIC_DRAW);
 
-    // 큐브 인덱스 버퍼 바인드
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.EBO);
-    // 전체 인덱스 배열의 크기 전달
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, object.indexlist.size() * sizeof(Index), object.indexlist.data(), GL_DYNAMIC_DRAW);
+	// 큐브 인덱스 버퍼 바인드
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, object.EBO);
+	// 전체 인덱스 배열의 크기 전달
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, object.indexlist.size() * sizeof(Index), object.indexlist.data(), GL_DYNAMIC_DRAW);
 
-    // 위치 속성 설정
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glEnableVertexAttribArray(0);
+	// 위치 속성 설정
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+	glEnableVertexAttribArray(0);
 
-    // 큐브 색상 버퍼 바인드
-    glBindBuffer(GL_ARRAY_BUFFER, object.vbo[1]);
-    glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glEnableVertexAttribArray(1);
+	// 큐브 색상 버퍼 바인드
+	glBindBuffer(GL_ARRAY_BUFFER, object.vbo[1]);
+	glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+	glEnableVertexAttribArray(1);
 }
 
 GLvoid UpdateVBO(Coordinate object) {
@@ -301,90 +195,6 @@ GLvoid UpdateVBO(Coordinate object) {
 	glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
 	glEnableVertexAttribArray(1);
-}
-
-GLvoid Keyboard(unsigned char key, int x, int y) {
-	switch (key) {
-	case '1':
-		which_face = 1;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '2':
-		which_face = 2;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '3':
-		which_face = 3;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '4':
-		which_face = 4;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '5':
-		which_face = 5;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '6':
-		which_face = 6;
-		which_figure = false;
-		which_face2 = 0;
-		break;
-	case '7':
-		which_face = 7;
-		which_figure = true;
-		which_face2 = 1;
-		break;
-	case '8':
-		which_face = 8;
-		which_figure = true;
-		which_face2 = 1;
-		break;
-	case '9':
-		which_face = 9;
-		which_figure = true;
-		which_face2 = 1;
-		break;
-	case '0':
-		which_face = 10;
-		which_figure = true;
-		which_face2 = 1;
-		break;
-	case 'c':
-		which_figure = false;
-		which_face = rand() % 6 + 1;
-		do
-		{
-			which_face2 = rand() % 6 + 1;
-		} while (which_face == which_face2);
-		break;
-	case 't':
-		which_figure = true;
-		which_face = rand() % 4+7;
-		do
-		{
-			which_face2 = rand() % 4 + 7;
-		} while (which_face == which_face2);
-		break;
-	};
-	glutPostRedisplay(); // 일정 시간마다 화면을 다시 그리기
-}
-
-void Timer(int value) {
-
-}
-
-void Mouse(int button, int state, int x, int y) {
-
-}
-
-void Motion(int x, int y) {
-
 }
 
 GLvoid Reshape(int w, int h)
@@ -462,3 +272,100 @@ void CreateShaderProgram()
 	// 세이더 프로그램 사용
 	glUseProgram(shaderProgramID);
 }
+
+void Draw_Tetra(float x, float y, float z, float size, Object obj) {
+
+
+	glutPostRedisplay();
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+}
+
+void init_figure() {
+
+	//---------------------------정육면체-----------------------------
+	tetra.vertex.clear();
+	tetra.color.clear();
+	tetra.indexlist.clear();
+	float size = 0.5f, x = 0.0f, y = 0.0f, z = 0.0f;
+	float a = 0.85 * size;
+	// 정점 추가
+	tetra.vertex.emplace_back(glm::vec3{ x, y + size, z });
+	tetra.vertex.emplace_back(glm::vec3{ x, y - size / 2, z + a });
+	tetra.vertex.emplace_back(glm::vec3{ x + 0.85 * a, y - size / 2, z - a / 2 });
+	tetra.vertex.emplace_back(glm::vec3{ x - 0.85 * a, y - size / 2, z - a / 2 });
+
+	// 색상 추가
+	tetra.color.emplace_back(glm::vec3{ 1.0f, 1.0f, 0.0f });
+	tetra.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
+	tetra.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 1.0f });
+	tetra.color.emplace_back(glm::vec3{ 0.5f, 0.5f, 0.5f });
+
+	//인덱스 리스트 추가
+	tetra.indexlist.emplace_back(Index{ 0, 1, 2 });
+	tetra.indexlist.emplace_back(Index{ 0, 2, 3 });
+	tetra.indexlist.emplace_back(Index{ 0, 3, 1 });
+	tetra.indexlist.emplace_back(Index{ 1, 2, 3 });
+
+	//---------------------------정사면체-----------------------------
+	cube.vertex.clear();
+	cube.color.clear();
+	cube.indexlist.clear();
+
+	// 정점 추가
+	cube.vertex.emplace_back(glm::vec3{ x - size, y + size, z - size });
+	cube.vertex.emplace_back(glm::vec3{ x - size, y + size, z + size });
+	cube.vertex.emplace_back(glm::vec3{ x + size, y + size, z + size });
+	cube.vertex.emplace_back(glm::vec3{ x + size, y + size, z - size });
+
+	cube.vertex.emplace_back(glm::vec3{ x - size, y - size, z - size });
+	cube.vertex.emplace_back(glm::vec3{ x - size, y - size, z + size });
+	cube.vertex.emplace_back(glm::vec3{ x + size, y - size, z + size });
+	cube.vertex.emplace_back(glm::vec3{ x + size, y - size, z - size });
+
+	// 색상 추가
+	cube.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });
+	cube.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
+	cube.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });
+	cube.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 1.0f });
+
+	cube.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 0.0f });
+	cube.color.emplace_back(glm::vec3{ 1.0f, 1.0f, 0.0f });
+	cube.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });
+	cube.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
+
+	// 인덱스 추가
+	cube.indexlist.emplace_back(Index{ 0, 1, 2 });
+	cube.indexlist.emplace_back(Index{ 0, 2, 3 });
+	cube.indexlist.emplace_back(Index{ 1, 5, 6 });
+	cube.indexlist.emplace_back(Index{ 1, 6, 2 });
+	cube.indexlist.emplace_back(Index{ 2, 6, 7 });
+	cube.indexlist.emplace_back(Index{ 2, 7, 3 });
+	cube.indexlist.emplace_back(Index{ 0, 4, 5 });
+	cube.indexlist.emplace_back(Index{ 0, 5, 1 });
+	cube.indexlist.emplace_back(Index{ 5, 4, 6 });
+	cube.indexlist.emplace_back(Index{ 4, 7, 6 });
+	cube.indexlist.emplace_back(Index{ 0, 7, 4 });
+	cube.indexlist.emplace_back(Index{ 0, 3, 7 });
+
+	// VBO 업데이트
+	UpdateVBO(tetra);
+	UpdateVBO(cube);
+}
+void Timer(int value) {
+	// 화면을 다시 그리도록 요청
+	glutPostRedisplay();
+	glutTimerFunc(100, Timer, value);
+}
+
+void Mouse(int button, int state, int x, int y) {
+
+}
+
+void Motion(int x, int y) {
+
+}
+GLvoid Keyboard(unsigned char key, int x, int y){
+
+}
+
