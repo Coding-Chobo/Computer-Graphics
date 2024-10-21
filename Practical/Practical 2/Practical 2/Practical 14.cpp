@@ -3,18 +3,24 @@
 
 #define WIDTH 1200
 #define HEIGHT 900
-
-GLuint VAO, VBO[2], EBO;
+#define PI 3.1415926535897932384620588419716939
+#define MAX_LINE_LENGTH 1024
 GLchar* vertexSource, * fragmentSource; // 소스코드 저장 변수
 GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 Object cube{}, tetra{};
+Object objfile{};
 Coordinate Coordinate_system{};
-
-
-
-
+unsigned int shape{ 0 };
+GLfloat rotate_angle_x;
+GLfloat rotate_angle_y;
+bool mode_w{ false };
+unsigned int mode_animate_x{ 0 };
+unsigned int mode_animate_y{ 0 };
+void mainLoop() {
+	glutPostRedisplay(); // 다시 그리기 요청
+}
 void main(int argc, char** argv)
 {
 	// 윈도우 생성
@@ -27,24 +33,25 @@ void main(int argc, char** argv)
 	// GLEW 초기화하기
 	glewExperimental = GL_TRUE;
 	glewInit();
-	glutTimerFunc(100, Timer, 0);
-
-	//glEnable(GL_CULL_FACE);
-	//glEnable(GL_DEPTH_TEST);
+	// 은면제거
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 	
+	read_obj_file("Daven.obj", objfile);
+
 	InitBuffer();
-
 	CreateShaderProgram();
-
+	//도형 정보 초기화
 	init_figure();
 	//리콜 함수
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
 	glutMotionFunc(Motion);
 	glutKeyboardFunc(Keyboard);
+	glutSpecialFunc(SpecialKeyboard);
 	glutDisplayFunc(Render);
-
-	glutMainLoop();
+	glutIdleFunc(mainLoop); // 메인 루프
+	glutMainLoop(); //이벤트 루프 진입
 }
 //그리는 함수
 GLvoid Render()
@@ -52,24 +59,56 @@ GLvoid Render()
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(shaderProgramID);
-	//좌표계 그리기
-	Draw_Coordinate(Coordinate_system);
-	//변환행렬 생성
-	Make_Matrix();
 
-	glDrawElements(GL_TRIANGLES, 3 * (tetra.indexlist.size() + cube.indexlist.size()), GL_UNSIGNED_INT, 0);
+	init_Matrix();
+	// 좌표계 그리기 (회전이나 변환 적용되지 않음)
+	Draw_Coordinate(Coordinate_system);
+
+	// 변환행렬 생성 및 적용
+	Make_Matrix();
+	std::cout << objfile.indexlist.size() << std::endl;
+	UpdateVBO(objfile);
+	glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
+	// 도형 그리기
+	if (shape == 1)
+	{
+		UpdateVBO(cube);
+		if (!mode_w)
+		{
+			glDrawElements(GL_TRIANGLES, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+		else
+		{
+			glDrawElements(GL_LINE_LOOP, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+	}
+	else if (shape == 2)
+	{
+		UpdateVBO(tetra);
+		if (mode_w)
+		{
+			glDrawElements(GL_LINE_LOOP, 3 * tetra.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+		else
+		{
+			glDrawElements(GL_TRIANGLES, 3 * tetra.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+	}
 
 	glutSwapBuffers();
 }
 
+
 GLvoid InitBuffer()
 {
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(2, VBO);
-	glGenBuffers(1, &EBO);
 	glGenVertexArrays(1, &cube.vao);
 	glGenBuffers(2, cube.vbo);
 	glGenBuffers(1, &cube.EBO);
+
+	glGenVertexArrays(1, &objfile.vao);
+	glGenBuffers(2, objfile.vbo);
+	glGenBuffers(1, &objfile.EBO);
+
 	glGenVertexArrays(1, &tetra.vao);
 	glGenBuffers(2, tetra.vbo);
 	glGenBuffers(1, &tetra.EBO);
@@ -77,8 +116,38 @@ GLvoid InitBuffer()
 	glGenBuffers(2, Coordinate_system.vbo);
 	glGenBuffers(1, &Coordinate_system.EBO);
 }
-
+GLvoid init_Matrix() {
+	// 좌표계 그리기 전에 변환 초기화
+	glm::mat4 identityMatrix = glm::mat4(1.0f);
+	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
+	identityMatrix = glm::rotate(identityMatrix, glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	identityMatrix = glm::rotate(identityMatrix, glm::radians(10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(identityMatrix));
+}
 GLvoid Make_Matrix() {
+	float rotate_gap = PI / 90;
+	switch (mode_animate_x)
+	{
+	case 1://x축 양의 방향
+		rotate_angle_x += rotate_gap;
+		break;
+	case 2://x축 음의 방향
+		rotate_angle_x -= rotate_gap;
+		break;
+	default:
+		break;
+	}
+	switch (mode_animate_y)
+	{
+	case 3://y축 양의 방향
+		rotate_angle_y += rotate_gap;
+		break;
+	case 4://y축 음의 방향
+		rotate_angle_y -= rotate_gap;
+		break;
+	default:
+		break;
+	}
 	// 모델 location 인덱스 저장
 	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
 
@@ -93,6 +162,9 @@ GLvoid Make_Matrix() {
 	move = glm::translate(move, glm::vec3(0.0f, 0.0f, 0.0f));
 	rot = glm::rotate(rot, glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	rot = glm::rotate(rot, glm::radians(10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	rot = glm::rotate(rot, glm::radians(rotate_angle_x), glm::vec3(1.0f, 0.0f, 0.0f));
+	rot = glm::rotate(rot, glm::radians(rotate_angle_y), glm::vec3(0.0f, 1.0f, 0.0f));
+
 
 	// 변환 과정 처리
 	model = model * scale * move * rot;
@@ -117,10 +189,11 @@ void Draw_Coordinate(Coordinate obj) {
 	// 색상 추가 (각 축의 색상 설정)
 	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 0.0f });  // X축: 빨강
 	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 0.0f });  // X축: 빨강
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });  // Y축: 초록
-	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });  // Y축: 초록
-	obj.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });  // Z축: 파랑
-	obj.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });  // Z축: 파랑
+	obj.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });  // Y축: 파랑
+	obj.color.emplace_back(glm::vec3{ 0.0f, 0.0f, 1.0f });  // Y축: 파랑
+	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });  // Z축: 초록
+	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 0.0f });  // Z축: 초록
+
 
 	// 인덱스 추가
 	obj.indexlist.emplace_back(0);  // X축
@@ -140,14 +213,131 @@ void Draw_Coordinate(Coordinate obj) {
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 }
+void Timer(int value) {
+	
+}
 
-void DrawCube(float x, float y, float z, float size, Object obj) {
+void Mouse(int button, int state, int x, int y) {
 
+}
+void Motion(int x, int y) {
 
-	// VBO 업데이트
-	UpdateVBO(obj);
-
-	std::cout << "Index count: " << obj.indexlist.size() << std::endl;
+}
+void SpecialKeyboard(int key, int x, int y)
+{
+	switch (key)
+	{
+	case GLUT_KEY_LEFT:
+		if (shape == 1)
+		{
+			for (int i = 0; i < cube.vertex.size(); i++)
+			{
+				cube.vertex.at(i).x -= 0.05f;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < tetra.vertex.size(); i++)
+			{
+				tetra.vertex.at(i).x -= 0.05f;
+			}
+		}
+		break;
+	case GLUT_KEY_RIGHT:
+		if (shape == 1)
+		{
+			for (int i = 0; i < cube.vertex.size(); i++)
+			{
+				cube.vertex.at(i).x += 0.05f;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < tetra.vertex.size(); i++)
+			{
+				tetra.vertex.at(i).x += 0.05f;
+			}
+		}
+		break;
+	case GLUT_KEY_UP:
+		if (shape == 1)
+		{
+			for (int i = 0; i < cube.vertex.size(); i++)
+			{
+				cube.vertex.at(i).y += 0.05f;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < tetra.vertex.size(); i++)
+			{
+				tetra.vertex.at(i).y += 0.05f;
+			}
+		}
+		break;
+	case GLUT_KEY_DOWN:
+		if (shape == 1)
+		{
+			for (int i = 0; i < cube.vertex.size(); i++)
+			{
+				cube.vertex.at(i).y -= 0.05f;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < tetra.vertex.size(); i++)
+			{
+				tetra.vertex.at(i).y -= 0.05f;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+}
+GLvoid Keyboard(unsigned char key, int x, int y) {
+	switch (key)
+	{
+	case 'c':
+		shape = 1;
+		break;
+	case 't':
+		shape = 2;
+		break;
+	case 'h':
+		glEnable(GL_CULL_FACE);
+		break;
+	case 'H':
+		glDisable(GL_CULL_FACE);
+		break;
+	case 'w':
+		mode_w = true;
+		break;
+	case 'W':
+		mode_w = false;
+	case 'x':
+		mode_animate_x = 1;
+		break;
+	case 'X':
+		mode_animate_x = 2;
+		break;
+	case 'y':
+		mode_animate_y = 3;
+		break;
+	case 'Y':
+		mode_animate_y = 4;
+		break;
+	case 's':
+		init_figure();
+		mode_w = { false };
+		rotate_angle_x = 0.0f;
+		rotate_angle_y = 0.0f;
+		mode_animate_x = { 0 };
+		mode_animate_y = { 0 };
+		break;
+	default:
+		break;
+	}
 }
 
 GLvoid UpdateVBO(Object object) {
@@ -231,7 +421,6 @@ char* GetBuf(const char* file)
 
 GLint CreateShader(const char* file, int type)
 {
-	// glsl 파일 읽기
 	GLchar* source = GetBuf(file);
 
 	// 객체 생성
@@ -272,18 +461,55 @@ void CreateShaderProgram()
 	// 세이더 프로그램 사용
 	glUseProgram(shaderProgramID);
 }
+void read_obj_file(const char* filename, Object& model) {
+	FILE* file;
+	fopen_s(&file, filename, "r");
+	if (!file) {
+		perror("Error opening file");
+		exit(EXIT_FAILURE);
+	}
 
-void Draw_Tetra(float x, float y, float z, float size, Object obj) {
+	char line[MAX_LINE_LENGTH];
+	std::vector<glm::vec3> temp_vertices;
+	std::vector<Index> temp_indices;
 
+	while (fgets(line, sizeof(line), file)) {
+		read_newline(line); // 개행문자 제거
 
-	glutPostRedisplay();
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
+		// 정점(Vertex) 데이터 처리
+		if (line[0] == 'v' && line[1] == ' ') {
+			glm::vec3 vertex;
+			sscanf_s(line + 2, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
+			temp_vertices.push_back(vertex);
+		}
+
+		// 면(Face) 데이터 처리
+		else if (line[0] == 'f' && line[1] == ' ') {
+			unsigned int v1, v2, v3;
+			sscanf_s(line + 2, "%u %u %u", &v1, &v2, &v3);
+
+			// OBJ 인덱스는 1부터 시작하기 때문에 0부터 시작하도록 조정
+			Index face = { v1 - 1, v2 - 1, v3 - 1 };
+			temp_indices.push_back(face);
+		}
+	}
+
+	fclose(file);
+
+	// Object 구조체에 정점 및 인덱스 데이터를 전달
+	model.vertex = temp_vertices; // 정점 데이터를 그대로 저장
+	model.indexlist = temp_indices; // 인덱스 데이터를 그대로 저장
+
+	// 색상은 임의로 설정 (추후 수정 가능)
+	for (size_t i = 0; i < model.vertex.size(); i++) {
+		model.color.push_back(glm::vec3(1.0f, 0.0f, 0.0f)); // 빨강색으로 설정
+	}
 }
+
 
 void init_figure() {
 
-	//---------------------------정육면체-----------------------------
+	//---------------------------정사면체-----------------------------
 	tetra.vertex.clear();
 	tetra.color.clear();
 	tetra.indexlist.clear();
@@ -307,7 +533,7 @@ void init_figure() {
 	tetra.indexlist.emplace_back(Index{ 0, 3, 1 });
 	tetra.indexlist.emplace_back(Index{ 1, 2, 3 });
 
-	//---------------------------정사면체-----------------------------
+	//---------------------------정육면체-----------------------------
 	cube.vertex.clear();
 	cube.color.clear();
 	cube.indexlist.clear();
@@ -341,6 +567,7 @@ void init_figure() {
 	cube.indexlist.emplace_back(Index{ 1, 6, 2 });
 	cube.indexlist.emplace_back(Index{ 2, 6, 7 });
 	cube.indexlist.emplace_back(Index{ 2, 7, 3 });
+
 	cube.indexlist.emplace_back(Index{ 0, 4, 5 });
 	cube.indexlist.emplace_back(Index{ 0, 5, 1 });
 	cube.indexlist.emplace_back(Index{ 5, 4, 6 });
@@ -352,20 +579,5 @@ void init_figure() {
 	UpdateVBO(tetra);
 	UpdateVBO(cube);
 }
-void Timer(int value) {
-	// 화면을 다시 그리도록 요청
-	glutPostRedisplay();
-	glutTimerFunc(100, Timer, value);
-}
 
-void Mouse(int button, int state, int x, int y) {
-
-}
-
-void Motion(int x, int y) {
-
-}
-GLvoid Keyboard(unsigned char key, int x, int y){
-
-}
 
