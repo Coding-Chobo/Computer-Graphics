@@ -36,13 +36,11 @@ void main(int argc, char** argv)
 	// 은면제거
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
-	
-	read_obj_file("Daven.obj", objfile);
-
 	InitBuffer();
 	CreateShaderProgram();
 	//도형 정보 초기화
 	init_figure();
+	read_obj_file("Daven.obj", objfile);
 	//리콜 함수
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
@@ -66,9 +64,11 @@ GLvoid Render()
 
 	// 변환행렬 생성 및 적용
 	Make_Matrix();
-	std::cout << objfile.indexlist.size() << std::endl;
 	UpdateVBO(objfile);
 	glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
+	std::cout << "인덱스리스트 갯수 :" << objfile.indexlist.size() << std::endl;
+	std::cout << "버텍스 갯수 :" << objfile.vertex.size() << std::endl;
+	std::cout << "컬러 갯수 :" << objfile.color.size() << std::endl;
 	// 도형 그리기
 	if (shape == 1)
 	{
@@ -112,6 +112,7 @@ GLvoid InitBuffer()
 	glGenVertexArrays(1, &tetra.vao);
 	glGenBuffers(2, tetra.vbo);
 	glGenBuffers(1, &tetra.EBO);
+
 	glGenVertexArrays(1, &Coordinate_system.vao);
 	glGenBuffers(2, Coordinate_system.vbo);
 	glGenBuffers(1, &Coordinate_system.EBO);
@@ -486,7 +487,10 @@ void read_obj_file(const char* filename, Object& model) {
 		// 면(Face) 데이터 처리
 		else if (line[0] == 'f' && line[1] == ' ') {
 			unsigned int v1, v2, v3;
-			sscanf_s(line + 2, "%u %u %u", &v1, &v2, &v3);
+			unsigned int vt1, vt2, vt3; // 텍스처 좌표 인덱스
+			unsigned int vn1, vn2, vn3; // 법선 벡터 인덱스
+			sscanf_s(line + 2, "%u/%u/%u %u/%u/%u %u/%u/%u",
+				&v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
 
 			// OBJ 인덱스는 1부터 시작하기 때문에 0부터 시작하도록 조정
 			Index face = { v1 - 1, v2 - 1, v3 - 1 };
@@ -502,8 +506,9 @@ void read_obj_file(const char* filename, Object& model) {
 
 	// 색상은 임의로 설정 (추후 수정 가능)
 	for (size_t i = 0; i < model.vertex.size(); i++) {
-		model.color.push_back(glm::vec3(1.0f, 0.0f, 0.0f)); // 빨강색으로 설정
+		model.color.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // 빨강색으로 설정
 	}
+	UpdateVBO(model);
 }
 
 
@@ -574,7 +579,10 @@ void init_figure() {
 	cube.indexlist.emplace_back(Index{ 4, 7, 6 });
 	cube.indexlist.emplace_back(Index{ 0, 7, 4 });
 	cube.indexlist.emplace_back(Index{ 0, 3, 7 });
-
+	//////////
+	objfile.vertex.clear();
+	objfile.color.clear();
+	objfile.indexlist.clear();
 	// VBO 업데이트
 	UpdateVBO(tetra);
 	UpdateVBO(cube);
