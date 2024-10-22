@@ -37,12 +37,11 @@ void main(int argc, char** argv)
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
 	
-	read_obj_file("Daven.obj", objfile);
-
 	InitBuffer();
 	CreateShaderProgram();
 	//도형 정보 초기화
 	init_figure();
+	read_obj_file("Daven.obj", objfile);
 	//리콜 함수
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
@@ -66,6 +65,7 @@ GLvoid Render()
 
 	// 변환행렬 생성 및 적용
 	Make_Matrix();
+	std::cout << objfile.vertex.size() << std::endl;
 	std::cout << objfile.indexlist.size() << std::endl;
 	UpdateVBO(objfile);
 	glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
@@ -112,6 +112,7 @@ GLvoid InitBuffer()
 	glGenVertexArrays(1, &tetra.vao);
 	glGenBuffers(2, tetra.vbo);
 	glGenBuffers(1, &tetra.EBO);
+
 	glGenVertexArrays(1, &Coordinate_system.vao);
 	glGenBuffers(2, Coordinate_system.vbo);
 	glGenBuffers(1, &Coordinate_system.EBO);
