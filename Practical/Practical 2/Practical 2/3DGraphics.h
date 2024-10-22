@@ -27,6 +27,12 @@ struct Index
     unsigned int v2;
     unsigned int v3;
 };
+struct Gauge
+{
+    float x;
+    float y;
+    float z;
+};
 struct Object {
     vector<glm::vec3>vertex;
     vector<glm::vec3>color;
@@ -34,6 +40,9 @@ struct Object {
     GLuint vao;
     GLuint vbo[2];
     GLuint EBO;
+    Gauge transform;
+    Gauge scaling;
+    Gauge rotation;
 };
 struct Coordinate {
     vector<glm::vec3>vertex;
@@ -52,8 +61,10 @@ void Make_Cube(float x, float y, float z, float size, Object& obj);
 void Make_Tetra(float x, float y, float z, float size, Object& obj);
 void Make_Corn(float x, float y, float z, float size, Object& obj);
 void Draw_Coordinate(Coordinate obj);
-
+void Draw_Cube(float x, float y, float z, float size, Object obj);
+void Draw_Tetra(float x, float y, float z, float size, Object obj);
 GLvoid InitBuffer();
+GLvoid Make_Matrix();
 GLvoid Make_Matrix(float& orbit_angle, float self_scale_x, float self_scale_y, float self_scale_z, float self_rotate_x, float self_rotate_y, float self_rotate_z, float self_trans_x, float self_trans_y, float self_trans_z);
 GLvoid init_Matrix();
 GLvoid UpdateVBO(Coordinate object);
