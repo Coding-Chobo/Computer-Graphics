@@ -41,7 +41,7 @@ void main(int argc, char** argv)
 	CreateShaderProgram();
 	//도형 정보 초기화
 	init_figure();
-	read_obj_file("Daven.obj", objfile);
+
 	//리콜 함수
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
@@ -65,11 +65,8 @@ GLvoid Render()
 
 	// 변환행렬 생성 및 적용
 	Make_Matrix();
-	UpdateVBO(objfile);
-	glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
-	std::cout << "인덱스리스트 갯수 :" << objfile.indexlist.size() << std::endl;
-	std::cout << "버텍스 갯수 :" << objfile.vertex.size() << std::endl;
-	std::cout << "컬러 갯수 :" << objfile.color.size() << std::endl;
+
+	
 	// 도형 그리기
 	if (shape == 1)
 	{
@@ -93,6 +90,18 @@ GLvoid Render()
 		else
 		{
 			glDrawElements(GL_TRIANGLES, 3 * tetra.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+	}
+	else if (shape == 3)
+	{
+		UpdateVBO(objfile);
+		if (mode_w)
+		{
+			glDrawElements(GL_LINE_LOOP, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
+		}
+		else
+		{
+			glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
 		}
 	}
 
@@ -127,7 +136,7 @@ GLvoid init_Matrix() {
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(identityMatrix));
 }
 GLvoid Make_Matrix() {
-	float rotate_gap = PI / 90;
+	float rotate_gap = PI / 20;
 	switch (mode_animate_x)
 	{
 	case 1://x축 양의 방향
@@ -152,27 +161,43 @@ GLvoid Make_Matrix() {
 	}
 	// 모델 location 인덱스 저장
 	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
-
-	// 모델 및 변환 변수 초기화
-	glm::mat4 model = glm::mat4(1.0f);
-	glm::mat4 scale = glm::mat4(1.0f);
-	glm::mat4 rot = glm::mat4(1.0f);
-	glm::mat4 move = glm::mat4(1.0f);
-
-	// 변환
-	scale = glm::scale(scale, glm::vec3(0.5f, 0.6f, 0.5f));
-	move = glm::translate(move, glm::vec3(0.0f, 0.0f, 0.0f));
-	rot = glm::rotate(rot, glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	rot = glm::rotate(rot, glm::radians(10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	rot = glm::rotate(rot, glm::radians(rotate_angle_x), glm::vec3(1.0f, 0.0f, 0.0f));
-	rot = glm::rotate(rot, glm::radians(rotate_angle_y), glm::vec3(0.0f, 1.0f, 0.0f));
+	// 변환 관련 변수를 정의합니다.
+	glm::mat4 modelMatrix = glm::mat4(1.0f); // 모델 변환
+	glm::mat4 viewMatrix = glm::mat4(1.0f);  // 뷰 변환 (카메라 변환)
+	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
+	//
+	// 모델 변환
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f, 0.6f, 0.5f));
+	modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(10.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(10.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(rotate_angle_x), glm::vec3(1.0f, 0.0f, 0.0f));
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(rotate_angle_y), glm::vec3(0.0f, 1.0f, 0.0f));
 
 
-	// 변환 과정 처리
-	model = model * scale * move * rot;
+
+
+
+	// 카메라 설정: 카메라 위치, 카메라가 바라보는 위치, 월드 업 벡터
+	viewMatrix = glm::lookAt(
+		glm::vec3(0.0f, 0.0f, 5.0f), // 카메라 위치
+		glm::vec3(0.0f, 0.0f, 0.0f), // 카메라가 바라보는 지점
+		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
+	);
+
+	// 투영 설정: FOV, 종횡비, near, far 클립 거리
+	projectionMatrix = glm::perspective(
+		glm::radians(45.0f), // 시야각
+		(float)WIDTH / (float)HEIGHT, // 종횡비
+		0.1f, 100.0f // 클립 평면 (near, far)
+	);
+
+
+	glm::mat4 mvpMatrix = projectionMatrix * viewMatrix * modelMatrix; // MVP 변환
+
 
 	// 모델 변환 적용
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
 }
 
 void Draw_Coordinate(Coordinate obj) {
@@ -216,7 +241,7 @@ void Draw_Coordinate(Coordinate obj) {
 	glDisableVertexAttribArray(1);
 }
 void Timer(int value) {
-	
+
 }
 
 void Mouse(int button, int state, int x, int y) {
@@ -305,6 +330,9 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		break;
 	case 't':
 		shape = 2;
+		break;
+	case 'o':
+		shape = 3;
 		break;
 	case 'h':
 		glEnable(GL_CULL_FACE);
@@ -580,10 +608,13 @@ void init_figure() {
 	cube.indexlist.emplace_back(Index{ 4, 7, 6 });
 	cube.indexlist.emplace_back(Index{ 0, 7, 4 });
 	cube.indexlist.emplace_back(Index{ 0, 3, 7 });
-	//////////
+
+
+	//---------------------------obj파일-----------------------------
 	objfile.vertex.clear();
 	objfile.color.clear();
 	objfile.indexlist.clear();
+	read_obj_file("Daven.obj", objfile);
 	// VBO 업데이트
 	UpdateVBO(tetra);
 	UpdateVBO(cube);
