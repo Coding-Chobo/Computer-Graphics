@@ -12,7 +12,7 @@ GLuint shaderProgramID; // 세이더 프로그램
 //그려질 오브젝트 선언
 Object cube{}, tetra{}, corn{};
 Object objfile{};
-Coordinate Coordinate_system{};
+Coordinate Coordinate_system{}, spiral{};
 Camera_Info camera{};
 
 GLuint vao;
@@ -25,9 +25,7 @@ GLfloat rotate_angle_x;
 GLfloat rotate_angle_y;
 GLfloat orbit_angle_y{ 0.0f };  // 공전 각도
 bool mode_swab{ false };
-unsigned int mode_animate_x{ 0 };
-unsigned int mode_animate_y{ 0 };
-unsigned int mode_orbit_y{ 0 };
+unsigned int mode_animate{ 0 };
 //-----------------------------------------------------------------------
 void main(int argc, char** argv)
 {
@@ -70,13 +68,14 @@ GLvoid Render() {
 	// 좌표계 그리기
 	init_Matrix();
 	Draw_Coordinate(Coordinate_system);
+	//스파이럴 구하기
+	UpdateVBO(spiral);
+	glDrawElements(GL_LINES, 2 * spiral.indexlist.size(), GL_UNSIGNED_INT, 0);
 
 	if (shape == 1 || shape == 3) {
 		if (mode_swab)
 		{
-			Make_Matrix(orbit_angle_y, 0.5f, 0.5f, 0.5f,//scale
-				rotate_angle_x, rotate_angle_y, 0.0f,//rotate
-				1.0f, 0.0f, 0.0f);//translate
+			Make_Matrix(orbit_angle_y,objfile);//translate
 			UpdateVBO(objfile);
 			glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
 		}
@@ -90,7 +89,7 @@ GLvoid Render() {
 		}
 
 	}
-	if (shape == 2 || shape == 3 ) {
+	if (shape == 2 || shape == 3) {
 		if (mode_swab)
 		{
 			Make_Matrix(orbit_angle_y, 0.5f, 0.5f, 0.5f,//scale
@@ -101,9 +100,7 @@ GLvoid Render() {
 		}
 		else
 		{
-			Make_Matrix(orbit_angle_y, 0.5f, 0.5f, 0.5f,//scale
-				rotate_angle_x, 0.5f, 0.5f, //rotate
-				-1.0f, 0.0f, 0.0f);//translate
+			Make_Matrix(orbit_angle_y,tetra);
 			UpdateVBO(tetra);
 			glDrawElements(GL_TRIANGLES, 3 * tetra.indexlist.size(), GL_UNSIGNED_INT, 0);
 		}
@@ -175,31 +172,28 @@ GLvoid init_Matrix() {
 
 }
 
-GLvoid Make_Matrix(float &orbit_angle, float self_scale_x, float self_scale_y, float self_scale_z, float self_rotate_x, float self_rotate_y, float self_rotate_z, float self_trans_x, float self_trans_y, float self_trans_z){
-	
+GLvoid Make_Matrix(float& orbit_angle, Object obj) {
+
 	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
 	// 변환 관련 변수를 정의합니다.
 	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
 	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
 	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
 
-
-
-
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
 
 	// 공전 변환: 객체가 원점을 기준으로 회전하게 합니다.
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 공전
-	modelMatrix = glm::translate(modelMatrix, glm::vec3(self_trans_x, self_trans_y, self_trans_z));  // 공전 거리 적용
+	modelMatrix = glm::translate(modelMatrix, glm::vec3(obj.transform.x, obj.transform.y, obj.transform.z));  // 공전 거리 적용
 
 	// 제자리 회전: 공전된 위치에서 객체를 제자리에서 회전시킵니다.
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(self_rotate_x), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(self_rotate_y), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(self_rotate_z), glm::vec3(0.0f, 0.0f, 1.0f));  // Z축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.rotation.x), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.rotation.x), glm::vec3(0.0f, 0.0f, 1.0f));  // Z축 회전
 
 	// 크기 변환
-	modelMatrix = glm::scale(modelMatrix, glm::vec3(self_scale_x, self_scale_y, self_scale_z));
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(obj.scaling.x, obj.scaling.y, obj.scaling.z));
 
 
 	// 카메라 설정
@@ -243,47 +237,19 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
 	case '1':
-		shape = 1;
+		mode_animate = 1;
 		break;
 	case '2':
-		shape = 2;
+		mode_animate = 2;
 		break;
 	case '3':
-		shape = 3;
+		mode_animate = 3;
 		break;
-	case 'h':
-		glEnable(GL_CULL_FACE);
+	case '4':
+		mode_animate = 4;
 		break;
-	case 'H':
-		glDisable(GL_CULL_FACE);
-		break;
-	case 'c':
-		if (mode_swab)
-		{
-			mode_swab = false;
-		}
-		else
-		{
-			mode_swab = true;
-		}
-		break;
-	case 'x':
-		mode_animate_x = 1;
-		break;
-	case 'X':
-		mode_animate_x = 2;
-		break;
-	case 'y':
-		mode_animate_y = 3;
-		break;
-	case 'Y':
-		mode_animate_y = 4;
-		break;
-	case 'r':
-		mode_orbit_y = 1;
-		break;
-	case 'R':
-		mode_orbit_y = 2;
+	case '5':
+		mode_animate = 5;
 		break;
 	case 's':
 		init_figure();
@@ -291,9 +257,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		rotate_angle_x = 0.0f;
 		rotate_angle_y = 0.0f;
 		orbit_angle_y = 0.0f;
-		mode_animate_x = { 0 };
-		mode_animate_y = { 0 };
-		mode_orbit_y = { 0 };
+		mode_animate = 0;
 
 		break;
 	default:
@@ -308,7 +272,7 @@ void init_figure() {
 	Make_Corn(0.0f, 0.0f, 0.0f, 0.5f, corn);
 	Make_Tetra(0.0f, 0.0f, 0.0f, 0.5f, tetra);
 	Make_Cube(0.0f, 0.0f, 0.0f, 0.5f, cube);
-
+	Make_Spiral(0.0f, 0.0f, 0.0f, spiral);
 
 	//---------------------------obj파일-----------------------------
 	objfile.vertex.clear();
@@ -365,7 +329,9 @@ void Make_Cube(float x, float y, float z, float size, Object& obj) {
 	obj.vertex.clear();
 	obj.color.clear();
 	obj.indexlist.clear();
-
+	obj.transform = { 0.0f,0.0f,0.0f };
+	obj.scaling = { 1.0f,1.0f,1.0f };
+	obj.rotation = { 0.0f,0.0f,0.0f };
 	// 정점 추가
 	obj.vertex.emplace_back(glm::vec3{ x - size, y + size, z - size });
 	obj.vertex.emplace_back(glm::vec3{ x - size, y + size, z + size });
@@ -404,6 +370,9 @@ void Make_Cube(float x, float y, float z, float size, Object& obj) {
 }
 
 void Make_Tetra(float x, float y, float z, float size, Object& obj) {
+	obj.transform = { 0.0f,0.0f,0.0f };
+	obj.scaling = { 1.0f,1.0f,1.0f };
+	obj.rotation = { 0.0f,0.0f,0.0f };
 	float a = 0.85 * size;
 	obj.vertex.emplace_back(glm::vec3{ x, y + size, z });
 	obj.vertex.emplace_back(glm::vec3{ x, y - size / 2, z + a });
@@ -427,7 +396,10 @@ void Make_Corn(float x, float y, float z, float size, Object& obj) {
 	obj.vertex.clear();
 	obj.color.clear();
 	obj.indexlist.clear();
-
+	//객체의 월드변환 매개변수값 초기화	
+	obj.transform = { 0.0f,0.0f,0.0f };
+	obj.scaling = { 1.0f,1.0f,1.0f };
+	obj.rotation = { 0.0f,0.0f,0.0f };
 	const int cnt = 20;
 	float theta[cnt];
 	for (int i = 0; i < cnt; i++)
@@ -462,6 +434,41 @@ void Make_Corn(float x, float y, float z, float size, Object& obj) {
 	}
 }
 
+void Make_Spiral(float x, float y, float z, Coordinate& obj) {
+	obj.vertex.clear();
+	obj.color.clear();
+	obj.indexlist.clear();
+	float size{};
+	const int cnt = 36;
+	float theta[cnt];
+	for (int i = 0; i < cnt; i++)
+	{
+		theta[i] = i * (360 / cnt);
+	}
+
+	//정점추가
+	for (int i = 0; i < 5 * cnt; i++)
+	{
+		size += 0.02f;
+		obj.vertex.emplace_back(glm::vec3{ x + size * cos(glm::radians(theta[i % cnt])), y, z + size * sin(glm::radians(theta[i % cnt])) });
+	}
+
+	// 색상 추가
+	for (int i = 0; i < obj.vertex.size(); i++)
+	{
+		float r = static_cast<float>(rand()) / RAND_MAX;
+		float g = static_cast<float>(rand()) / RAND_MAX;
+		float b = static_cast<float>(rand()) / RAND_MAX;
+		obj.color.emplace_back(glm::vec3{ r,g,b });
+	}
+	// 인덱스 리스트 추가
+
+	for (unsigned int i = 0; i < obj.vertex.size(); i++)
+	{
+		obj.indexlist.emplace_back(i);
+	}
+}
+
 GLvoid UpdateVBO(Object object) {
 	// VAO 바인드
 	glBindVertexArray(vao);
@@ -480,7 +487,7 @@ GLvoid UpdateVBO(Object object) {
 	glEnableVertexAttribArray(0);
 
 	// 큐브 색상 버퍼 바인드
-	glBindBuffer(GL_ARRAY_BUFFER , vbo[1]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
 	glBufferData(GL_ARRAY_BUFFER, object.color.size() * sizeof(glm::vec3), object.color.data(), GL_DYNAMIC_DRAW);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
 	glEnableVertexAttribArray(1);
@@ -488,7 +495,7 @@ GLvoid UpdateVBO(Object object) {
 
 GLvoid UpdateVBO(Coordinate object) {
 	// VAO 바인드
-	glBindVertexArray(object.vao);
+	glBindVertexArray(vao);
 
 	// 좌표계 정점 버퍼 바인드
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
@@ -592,35 +599,13 @@ void CreateShaderProgram()
 
 void mainLoop() {
 	float rotate_gap = PI / 90;
-	switch (mode_animate_x)
+	switch (mode_animate)
 	{
 	case 1://x축 양의 방향
 		rotate_angle_x += rotate_gap;
 		break;
 	case 2://x축 음의 방향
 		rotate_angle_x -= rotate_gap;
-		break;
-	default:
-		break;
-	}
-	switch (mode_animate_y)
-	{
-	case 3://y축 양의 방향
-		rotate_angle_y += rotate_gap;
-		break;
-	case 4://y축 음의 방향
-		rotate_angle_y -= rotate_gap;
-		break;
-	default:
-		break;
-	}
-	switch (mode_orbit_y)
-	{
-	case 1://y축 양의 방향
-		orbit_angle_y += rotate_gap;
-		break;
-	case 2://y축 음의 방향
-		orbit_angle_y -= rotate_gap;
 		break;
 	default:
 		break;
@@ -674,7 +659,11 @@ void read_obj_file(const char* filename, Object& model) {
 	for (size_t i = 0; i < model.vertex.size(); i++) {
 		model.color.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // 빨강색으로 설정
 	}
+	model.vertex.clear();
+	model.color.clear();
+	model.indexlist.clear();
+	model.transform = { 0.0f,0.0f,0.0f };
+	model.scaling = { 1.0f,1.0f,1.0f };
+	model.rotation = { 0.0f,0.0f,0.0f };
 	UpdateVBO(model);
 }
-
-

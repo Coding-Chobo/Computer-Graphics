@@ -27,30 +27,24 @@ struct Index
     unsigned int v2;
     unsigned int v3;
 };
-struct Gauge
+struct Translate
 {
-    float x;
-    float y;
-    float z;
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
 };
 struct Object {
     vector<glm::vec3>vertex;
     vector<glm::vec3>color;
     vector<Index>indexlist;
-    GLuint vao;
-    GLuint vbo[2];
-    GLuint EBO;
-    Gauge transform;
-    Gauge scaling;
-    Gauge rotation;
+    Translate transform;
+    Translate scaling;
+    Translate rotation;
 };
 struct Coordinate {
     vector<glm::vec3>vertex;
     vector<glm::vec3>color;
     vector<unsigned int>indexlist;
-    GLuint vao;
-    GLuint vbo[2];
-    GLuint EBO;
 };
 void read_newline(char* str) {
     char* pos;
@@ -60,12 +54,15 @@ void read_newline(char* str) {
 void Make_Cube(float x, float y, float z, float size, Object& obj);
 void Make_Tetra(float x, float y, float z, float size, Object& obj);
 void Make_Corn(float x, float y, float z, float size, Object& obj);
+void Make_Spiral(float x, float y, float z, Coordinate& obj);
 void Draw_Coordinate(Coordinate obj);
 void Draw_Cube(float x, float y, float z, float size, Object obj);
 void Draw_Tetra(float x, float y, float z, float size, Object obj);
 GLvoid InitBuffer();
 GLvoid Make_Matrix();
-GLvoid Make_Matrix(float& orbit_angle, float self_scale_x, float self_scale_y, float self_scale_z, float self_rotate_x, float self_rotate_y, float self_rotate_z, float self_trans_x, float self_trans_y, float self_trans_z);
+
+GLvoid Make_Matrix(float& orbit_scale,Object obj);
+GLvoid Make_Matrix(Object obj);
 GLvoid init_Matrix();
 GLvoid UpdateVBO(Coordinate object);
 GLvoid UpdateVBO(Object cube);
