@@ -10,7 +10,7 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
-Object cube{}, tetra{}, corn{};
+Object cube{}, tetra{}, corn{}, quad_pyra{}, temp{};
 Object objfile{};
 Coordinate Coordinate_system{}, spiral{};
 Camera_Info camera{};
@@ -27,10 +27,11 @@ float theta_3{};
 float theta_5{};
 float spiral_size{};
 float radius = 0.0f;
-Translate goal;
-Translate goal2;
+glm::vec3 goal[4];
+glm::vec3 goal2[4];
 GLfloat orbit_angle_y{ 0.0f };  // 공전 각도
 bool mode_swab{ false };
+bool mode_spin{ false };
 unsigned int mode_animate{ 0 };
 //-----------------------------------------------------------------------
 void main(int argc, char** argv)
@@ -74,65 +75,69 @@ GLvoid Render() {
 	// 좌표계 그리기
 	init_Matrix();
 	Draw_Coordinate(Coordinate_system);
-	//스파이럴 그리기
-	if (mode_animate)
+	//
+	if (mode_animate == 1)
 	{
-		UpdateVBO(spiral);
-		glDrawElements(GL_LINES, 2 * spiral.indexlist.size(), GL_UNSIGNED_INT, 0);
-	}
+		Make_Matrix(orbit_angle_y, cube);
+		UpdateVBO(cube);
+		glDrawElements(GL_TRIANGLES, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
 
-	if (mode_swab)
-	{
-		Make_Matrix(orbit_angle_y, objfile);
-		UpdateVBO(objfile);
-		glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
+		UpdateVBO(temp);
+		glDrawElements(GL_TRIANGLES, 3 * temp.indexlist.size(), GL_UNSIGNED_INT, 0);
+
 	}
-	else
+	else if (mode_animate == 2)
 	{
 		Make_Matrix(orbit_angle_y, cube);
 		UpdateVBO(cube);
 		glDrawElements(GL_TRIANGLES, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
 	}
+	else if (mode_animate == 3)
+	{
+		Make_Matrix(orbit_angle_y, cube);
+		UpdateVBO(cube);
+		glDrawElements(GL_TRIANGLES, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
 
-	
+	}
+	else if (mode_animate == 4)
+	{
+		Make_Matrix(orbit_angle_y, cube);
+		UpdateVBO(cube);
+		glDrawElements(GL_TRIANGLES, 3 * cube.indexlist.size(), GL_UNSIGNED_INT, 0);
+	}
+	else if (mode_animate == 5)
+	{
+
+	}
+	else if (mode_animate == 5)
+	{
+
+	}
 	if (mode_swab)
 	{
-		Make_Matrix(orbit_angle_y, corn);
-		UpdateVBO(corn);
-		glDrawElements(GL_TRIANGLES, 3 * corn.indexlist.size(), GL_UNSIGNED_INT, 0);
+		Make_Matrix(orbit_angle_y, quad_pyra);
+		UpdateVBO(quad_pyra);
+		glDrawElements(GL_TRIANGLES, 3 * quad_pyra.indexlist.size(), GL_UNSIGNED_INT, 0);
+
 	}
 	else
 	{
-		Make_Matrix(orbit_angle_y, tetra);
-		UpdateVBO(tetra);
-		glDrawElements(GL_TRIANGLES, 3 * tetra.indexlist.size(), GL_UNSIGNED_INT, 0);
+
 	}
-	
+
+
+		//Make_Matrix(orbit_angle_y, corn);
+		//UpdateVBO(corn);
+		//glDrawElements(GL_TRIANGLES, 3 * corn.indexlist.size(), GL_UNSIGNED_INT, 0);
+		//Make_Matrix(orbit_angle_y, objfile);
+		//UpdateVBO(objfile);
+		//glDrawElements(GL_TRIANGLES, 3 * objfile.indexlist.size(), GL_UNSIGNED_INT, 0);
+
 	glutSwapBuffers();
 }
 
 GLvoid InitBuffer()
 {
-	//glGenVertexArrays(1, &cube.vao);
-	//glGenBuffers(2, cube.vbo);
-	//glGenBuffers(1, &cube.EBO);
-
-	//glGenVertexArrays(1, &objfile.vao);
-	//glGenBuffers(2, objfile.vbo);
-	//glGenBuffers(1, &objfile.EBO);
-
-	//glGenVertexArrays(1, &tetra.vao);
-	//glGenBuffers(2, tetra.vbo);
-	//glGenBuffers(1, &tetra.EBO);
-
-	//glGenVertexArrays(1, &corn.vao);
-	//glGenBuffers(2, corn.vbo);
-	//glGenBuffers(1, &corn.EBO);
-
-	//glGenVertexArrays(1, &Coordinate_system.vao);
-	//glGenBuffers(2, Coordinate_system.vbo);
-	//glGenBuffers(1, &Coordinate_system.EBO);
-
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(2, vbo);
 	glGenBuffers(1, &EBO);
@@ -187,8 +192,13 @@ GLvoid Make_Matrix(float& orbit_angle, Object obj) {
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
 
 	// 공전 변환: 객체가 원점을 기준으로 회전하게 합니다.
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 공전
+	//modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 공전
 	modelMatrix = glm::translate(modelMatrix, glm::vec3(obj.transform.x, obj.transform.y, obj.transform.z));  // 공전 거리 적용
+	if (mode_spin)
+	{
+		modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 자전
+	}
+
 
 	// 제자리 회전: 공전된 위치에서 객체를 제자리에서 회전시킵니다.
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(obj.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
@@ -240,16 +250,20 @@ void SpecialKeyboard(int key, int x, int y)
 GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
-	case '1':
+	case 't':
 		if (mode_animate != 1)
 		{
-			tetra.transform = { 0,0,0 };
-			corn.transform = { 0,0,0 };
-			cube.transform = { 0,0,0 };
-			objfile.transform = { 0,0,0 };
+			for (int i = 0; i < 4; i++)
+			{
+				temp.vertex.emplace_back(cube.vertex.at(i).x, cube.vertex.at(i).y, cube.vertex.at(i).z);
+				temp.color.emplace_back(cube.color.at(i).x, cube.color.at(i).y, cube.color.at(i).z);
+			}
+			temp.indexlist.emplace_back(Index{ cube.indexlist.at(0).v1, cube.indexlist.at(0).v2, cube.indexlist.at(0).v3 });
+			temp.indexlist.emplace_back(Index{ cube.indexlist.at(1).v1, cube.indexlist.at(1).v2, cube.indexlist.at(1).v3 });
+			mode_animate = 1;
 			theta = 0.0f;
 		}
-		mode_animate = 1;
+
 		break;
 	case '2':
 
@@ -260,8 +274,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			objfile.transform = { 1.0f,1.0f,1.0f };
 			corn.transform = { -1.0f,-1.0f,-1.0f };
 			tetra.transform = { -1.0f,-1.0f,-1.0f };
-			goal = cube.transform;
-			goal2 = tetra.transform;			
+
 			mode_animate = 2;
 		}
 		break;
@@ -284,8 +297,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			objfile.transform = { 1.0f,0.0f,1.0f };
 			corn.transform = { -1.0f,0.0f,-1.0f };
 			tetra.transform = { -1.0f,0.0f,-1.0f };
-			goal = cube.transform;
-			goal2 = tetra.transform;
+
 			mode_animate = 4;
 		}
 		break;
@@ -301,8 +313,16 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 			mode_animate = 5;
 		}
 		break;
+	case 'h':
+		glEnable(GL_CULL_FACE);
+		break;
+	case 'H':
+		glDisable(GL_CULL_FACE);
 	case 'c':
 		mode_swab = !mode_swab;
+		break;
+	case 'y':
+		mode_spin = !mode_spin;
 		break;
 	case 's':
 
@@ -314,47 +334,28 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 
 void mainLoop() {
 	float rotate_gap = PI / 20;
+	orbit_angle_y += rotate_gap;
 	switch (mode_animate)
 	{
-	case 1://스파이럴
-		theta += 1;
-		spiral_size += 0.002f;
-		tetra.transform = { spiral_size * cos(glm::radians(theta)),0, spiral_size * sin(glm::radians(theta)) };
-		corn.transform = { spiral_size * cos(glm::radians(theta)),0, spiral_size * sin(glm::radians(theta)) };
-		if (theta >= 360.0)
+	case 1://육면체 윗면만 회전
+		theta += 2;
+		
+		for (int i = 0; i < 4; i++)
 		{
-			cube.transform = { (spiral_size - 0.72f)*cos(glm::radians(theta)),0, (spiral_size - 0.72f) * sin(glm::radians(theta)) };
-			objfile.transform = { (spiral_size - 0.72f) *cos(glm::radians(theta)),0, (spiral_size - 0.72f) * sin(glm::radians(theta)) };
+			temp.vertex[i].x = cube.vertex[i].x * cos(glm::radians(theta));
+			temp.vertex[i].y = cube.vertex[i].y * sin(glm::radians(theta));
 		}
-		break;
-	case 2://원점통과 위치 변경
-		theta_2 +=2;
-		cube.transform = { sin(glm::radians(theta_2)) * (goal2.x) ,sin(glm::radians(theta_2)) * (goal2.y),sin(glm::radians(theta_2)) * (goal2.z) };
-		objfile.transform = { sin(glm::radians(theta_2)) * (goal2.x) ,sin(glm::radians(theta_2)) * (goal2.y),sin(glm::radians(theta_2)) * (goal2.z) };
-		tetra.transform = { sin(glm::radians(theta_2)) * (goal.x) ,sin(glm::radians(theta_2)) * (goal.y),sin(glm::radians(theta_2)) * (goal.z) };
-		corn.transform = { sin(glm::radians(theta_2)) * (goal.x) ,sin(glm::radians(theta_2)) * (goal.y),sin(glm::radians(theta_2)) * (goal.z) };
+
 		break;
 	case 3://공전
-		orbit_angle_y += rotate_gap;
+
 		break;
 	case 4://위아래 지그재그
 		theta_3 += 2;
-		cube.transform = { sin(glm::radians(theta_3)) * (goal2.x) ,1.0f * sin(glm::radians(theta_3/2)),sin(glm::radians(theta_3)) * (goal2.z) };
-		objfile.transform = { sin(glm::radians(theta_3)) * (goal2.x) ,1.0f * sin(glm::radians(theta_3/2)),sin(glm::radians(theta_3)) * (goal2.z) };
-		tetra.transform = { sin(glm::radians(theta_3)) * (goal.x) ,-1.0f * sin(glm::radians(theta_3/2)),sin(glm::radians(theta_3)) * (goal.z) };
-		corn.transform = { sin(glm::radians(theta_3)) * (goal.x) ,-1.0f * sin(glm::radians(theta_3/2)) ,sin(glm::radians(theta_3)) * (goal.z) };
+
 		break;
 	case 5:
-		theta_3 += 2;
-		orbit_angle_y += rotate_gap;
-		cube.rotation.x += rotate_gap;
-		cube.rotation.y += rotate_gap;
-		objfile.rotation.x += rotate_gap;
-		objfile.rotation.y += rotate_gap;
-		corn.rotation.x += rotate_gap;
-		corn.rotation.y += rotate_gap;
-		tetra.rotation.x += rotate_gap;
-		tetra.rotation.y += rotate_gap;
+
 
 		cube.scaling = { sin(glm::radians(theta_3)) + 1.0f,sin(glm::radians(theta_3)) + 1.0f,sin(glm::radians(theta_3)) + 1.0f };
 		objfile.scaling = { sin(glm::radians(theta_3)) + 1.0f,sin(glm::radians(theta_3)) + 1.0f,sin(glm::radians(theta_3)) + 1.0f };
@@ -374,7 +375,6 @@ void init_figure() {
 	objfile.color.clear();
 	objfile.indexlist.clear();
 	read_obj_file("2021184024.obj", objfile);
-
 	//-----------------월드 변환 좌표 입력--------------------------
 	camera.x = 0.0f, camera.y = 2.0f, camera.z = 6.0f;
 	camera.at_x = 0.0f, camera.at_y = 0.0f, camera.at_z = 0.0f;
@@ -382,14 +382,8 @@ void init_figure() {
 	Make_Corn(0.0f, 0.0f, 0.0f, 0.3f, corn);
 	Make_Tetra(0.0f, 0.0f, 0.0f, 0.3f, tetra);
 	Make_Cube(0.0f, 0.0f, 0.0f, 0.3f, cube);
+	Make_QuadPyra(0.0f, 0.0f, 0.0f, 0.3f, quad_pyra);
 	Make_Spiral(0.0f, 0.0f, 0.0f, spiral);
-
-
-
-	corn.transform = { -0.5f ,0.0f ,0.0f };
-	tetra.transform = { -0.5f ,0.0f ,0.0f };
-	objfile.transform = { 0.5f ,0.0f ,0.0f };
-	cube.transform = { 0.5f ,0.0f ,0.0f };
 }
 
 void Draw_Coordinate(Coordinate obj) {
@@ -498,6 +492,32 @@ void Make_Tetra(float x, float y, float z, float size, Object& obj) {
 	obj.indexlist.emplace_back(Index{ 0, 2, 3 });
 	obj.indexlist.emplace_back(Index{ 0, 3, 1 });
 	obj.indexlist.emplace_back(Index{ 1, 2, 3 });
+}
+
+void Make_QuadPyra(float x, float y, float z, float size, Object& obj) {
+	obj.transform = { 0.0f,0.0f,0.0f };
+	obj.scaling = { 1.0f,1.0f,1.0f };
+	obj.rotation = { 0.0f,0.0f,0.0f };
+	
+	obj.vertex.emplace_back(glm::vec3{ x, y + size, z });
+	obj.vertex.emplace_back(glm::vec3{ x - size, y - size / 2, z + size });
+	obj.vertex.emplace_back(glm::vec3{ x + size, y - size / 2, z + size });
+	obj.vertex.emplace_back(glm::vec3{ x + size, y - size / 2, z - size });
+	obj.vertex.emplace_back(glm::vec3{ x - size, y - size / 2, z - size });
+
+	// 색상 추가
+	obj.color.emplace_back(glm::vec3{ 1.0f, 1.0f, 0.0f });
+	obj.color.emplace_back(glm::vec3{ 0.0f, 1.0f, 1.0f });
+	obj.color.emplace_back(glm::vec3{ 1.0f, 0.0f, 1.0f });
+	obj.color.emplace_back(glm::vec3{ 0.5f, 0.5f, 0.5f });
+
+	// 인덱스 리스트 추가
+	obj.indexlist.emplace_back(Index{ 0, 1, 2 });
+	obj.indexlist.emplace_back(Index{ 0, 2, 3 });
+	obj.indexlist.emplace_back(Index{ 0, 3, 4 });
+	obj.indexlist.emplace_back(Index{ 0, 4, 1 });
+	obj.indexlist.emplace_back(Index{ 3, 2, 1 });
+	obj.indexlist.emplace_back(Index{ 1, 4, 3 });
 }
 
 void Make_Corn(float x, float y, float z, float size, Object& obj) {

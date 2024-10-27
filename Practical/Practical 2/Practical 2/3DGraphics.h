@@ -54,7 +54,9 @@ void read_newline(char* str) {
 void Make_Cube(float x, float y, float z, float size, Object& obj);
 void Make_Tetra(float x, float y, float z, float size, Object& obj);
 void Make_Corn(float x, float y, float z, float size, Object& obj);
+void Make_QuadPyra(float x, float y, float z, float size, Object& obj);
 void Make_Spiral(float x, float y, float z, Coordinate& obj);
+
 void Draw_Coordinate(Coordinate obj);
 void Draw_Cube(float x, float y, float z, float size, Object obj);
 void Draw_Tetra(float x, float y, float z, float size, Object obj);
