@@ -33,19 +33,31 @@ struct Translate
     GLfloat y;
     GLfloat z;
 };
-struct Object {
+class Object {
+public:
     vector<glm::vec3>vertex;
     vector<glm::vec3>color;
     vector<Index>indexlist;
     Translate transform;
     Translate scaling;
     Translate rotation;
+    glm::mat4 Matrix;
+    void Make_Matrix(float size);
+    Object();
 };
+Object::Object() {
+    Matrix = glm::mat4(1.0f);
+    transform = { 0.0f,0.0f,0.0f };
+    rotation = { 0.0f,0.0f,0.0f };
+    scaling = { 1.0f,1.0f ,1.0f };
+}
+
 struct Coordinate {
     vector<glm::vec3>vertex;
     vector<glm::vec3>color;
     vector<unsigned int>indexlist;
 };
+//----------------------------------------------------------
 void read_newline(char* str) {
     char* pos;
     if ((pos = strchr(str, '\n')) != NULL)
@@ -54,8 +66,21 @@ void read_newline(char* str) {
 void Make_Cube(float x, float y, float z, float size, Object& obj);
 void Make_Tetra(float x, float y, float z, float size, Object& obj);
 void Make_Corn(float x, float y, float z, float size, Object& obj);
-void Make_QuadPyra(float x, float y, float z, float size, Object& obj);
+
 void Make_Spiral(float x, float y, float z, Coordinate& obj);
+//큐브 나눠그리기
+void Make_cube_top(Object& obj,float size);
+void Make_cube_bottom(Object& obj, float size);
+void Make_cube_Left(Object& obj, float size);
+void Make_cube_Right(Object& obj, float size);
+void Make_cube_front(Object& obj, float size);
+void Make_cube_back(Object& obj, float size);
+//사각뿔 그리기
+void Make_quad_pyra_bottom(Object& obj, float size);
+void Make_quad_pyra_Left(Object& obj, float size);
+void Make_quad_pyra_Right(Object& obj, float size);
+void Make_quad_pyra_front(Object& obj, float size);
+void Make_quad_pyra_back(Object& obj, float size);
 
 void Draw_Coordinate(Coordinate obj);
 void Draw_Cube(float x, float y, float z, float size, Object obj);
@@ -64,7 +89,6 @@ GLvoid InitBuffer();
 GLvoid Make_Matrix();
 
 GLvoid Make_Matrix(float& orbit_scale,Object obj);
-GLvoid Make_Matrix(Object obj);
 GLvoid init_Matrix();
 GLvoid UpdateVBO(Coordinate object);
 GLvoid UpdateVBO(Object cube);
@@ -79,6 +103,6 @@ GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
 void mainLoop();
 void SpecialKeyboard(int key, int x, int y);
-void init_figure();
+void init_figure(float size);
 void read_obj_file(const char* filename, Object& model);
 void swap_figure(Object& obj1, Object& obj2);

@@ -113,26 +113,6 @@ GLvoid Render() {
 
 GLvoid InitBuffer()
 {
-	//glGenVertexArrays(1, &cube.vao);
-	//glGenBuffers(2, cube.vbo);
-	//glGenBuffers(1, &cube.EBO);
-
-	//glGenVertexArrays(1, &objfile.vao);
-	//glGenBuffers(2, objfile.vbo);
-	//glGenBuffers(1, &objfile.EBO);
-
-	//glGenVertexArrays(1, &tetra.vao);
-	//glGenBuffers(2, tetra.vbo);
-	//glGenBuffers(1, &tetra.EBO);
-
-	//glGenVertexArrays(1, &corn.vao);
-	//glGenBuffers(2, corn.vbo);
-	//glGenBuffers(1, &corn.EBO);
-
-	//glGenVertexArrays(1, &Coordinate_system.vao);
-	//glGenBuffers(2, Coordinate_system.vbo);
-	//glGenBuffers(1, &Coordinate_system.EBO);
-
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(2, vbo);
 	glGenBuffers(1, &EBO);
@@ -488,7 +468,7 @@ GLvoid UpdateVBO(Object object) {
 
 GLvoid UpdateVBO(Coordinate object) {
 	// VAO 바인드
-	glBindVertexArray(object.vao);
+	glBindVertexArray(vao);
 
 	// 좌표계 정점 버퍼 바인드
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);

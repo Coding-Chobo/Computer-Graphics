@@ -373,7 +373,7 @@ void init_figure() {
 	objfile.vertex.clear();
 	objfile.color.clear();
 	objfile.indexlist.clear();
-	read_obj_file("2021184024.obj", objfile);
+	read_obj_file("cat_ldc.obj", objfile);
 
 	//-----------------월드 변환 좌표 입력--------------------------
 	camera.x = 0.0f, camera.y = 2.0f, camera.z = 6.0f;
