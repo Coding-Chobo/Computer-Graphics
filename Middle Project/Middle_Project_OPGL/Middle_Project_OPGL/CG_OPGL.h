@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <optional>
 //--------------------------------define--------------------------------
 using std::vector;
 //----------------------------- 구조체 선언 -------------------------------
@@ -81,8 +82,12 @@ GLvoid CreateShaderProgram();
 GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
 void mainLoop();
-bool CheckCollisionWithPolygon(Object obj, glm::vec3 lineStart, glm::vec3 lineEnd);
+
+bool CheckCollisionWithPolygon(const Object& obj, glm::vec3 lineStart, glm::vec3 lineEnd, Translate& cp1, Translate& cp2);
 bool CheckLineIntersection(glm::vec3 p1, glm::vec3 p2, glm::vec3 q1, glm::vec3 q2);
 bool IsPointInTriangle(glm::vec3 pt, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2);
+bool GetIntersectionPoint(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& q1, const glm::vec3& q2, Translate& intersection);
+
+
 void init_figure();
 void read_obj_file(const char* filename, Object& model);

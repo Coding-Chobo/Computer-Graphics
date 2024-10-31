@@ -10,10 +10,11 @@
 	GLuint shaderProgramID; // 세이더 프로그램
 
 	//그려질 오브젝트 선언
-	vector<Object>figure;
+	vector<Object>figure, sliced_figure;
 	Object objfile{};
 	Coordinate Coordinate_system{}, eraser_m{};
 	Camera_Info camera{};
+	Translate cp1, cp2;
 	//버퍼 선언
 	GLuint vao;
 	GLuint vbo[2];
@@ -151,7 +152,7 @@
 		time_for_craft++;
 		//theta+=2;
 		// 생성조건
-		if (time_for_craft > 60)
+		if (time_for_craft > 40)
 		{
 			float size = (static_cast<float>(rand()) / RAND_MAX)/10.0f + 0.075f;
 			if (rand() % 10 >= 5)
@@ -184,6 +185,11 @@
 				figure.at(i).transform.x += figure.at(i).dx * speed;
 				figure.at(i).transform.y += figure.at(i).dy * speed;
 			}
+			else
+			{
+				figure.at(i).transform.x += figure.at(i).dx * speed / 3;
+				figure.at(i).transform.y -= figure.at(i).dy * speed/ 2;
+			}
 			figure.at(i).transform.y -= figure.at(i).flight_time * 0.00015f;
 		}
 		// 맵 이탈 검사
@@ -210,21 +216,21 @@
 		float xpos = static_cast<float>(x) / (WIDTH / 2.0f) - 1.0f;
 		float ypos = 1.0f - static_cast<float>(y) / (HEIGHT / 2.0f);
 		if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-			eraser_m.vertex.emplace_back(glm::vec3{ xpos,ypos,0.0f });
-			eraser_m.vertex.emplace_back(glm::vec3{ xpos,ypos,0.0f });
+			eraser_m.vertex.emplace_back(glm::vec3{ xpos, ypos, 0.0f });
+			eraser_m.vertex.emplace_back(glm::vec3{ xpos, ypos, 0.0f });
 		}
 		else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
-			//도형과 충돌검사
-			// 도형과의 충돌 검사
 			for (size_t i = 0; i < figure.size(); ++i) {
-				if (CheckCollisionWithPolygon(figure[i], eraser_m.vertex[0], eraser_m.vertex[1])) {
+				if (CheckCollisionWithPolygon(figure[i], eraser_m.vertex[0], eraser_m.vertex[1], cp1, cp2)) {
 					figure[i].is_sliced = true;
-					break;
+					std::cout << "Intersection points: (" << cp1.x << ", " << cp1.y << ", " << cp1.z << ") and ("
+						<< cp2.x << ", " << cp2.y << ", " << cp2.z << ")\n";
 				}
 			}
 			eraser_m.vertex.clear();
 		}
 	}
+
 	void Motion(int x, int y) {
 		// 좌표 변환
 		float xpos = static_cast<float>(x) / (WIDTH / 2.0f) - 1.0f;
@@ -391,21 +397,28 @@
 		return obj;
 	}
 
-	bool CheckCollisionWithPolygon(Object obj, glm::vec3 lineStart, glm::vec3 lineEnd) {
+	bool CheckCollisionWithPolygon(const Object& obj, glm::vec3 lineStart, glm::vec3 lineEnd, Translate& cp1, Translate& cp2) {
 		size_t vertexCount = obj.vertex.size();
+		int intersectionCount = 0;
 
-		// 삼각형의 각 변과 마우스 선분 간 교차 여부 확인
 		for (size_t i = 0; i < vertexCount; ++i) {
-			glm::vec3 v0 = obj.vertex[i];
-			glm::vec3 v1 = obj.vertex[(i + 1) % vertexCount]; // 삼각형의 다음 변
+			glm::vec3 v0 = { obj.vertex[i].x + obj.transform.x, obj.vertex[i].y + obj.transform.y, 0.0f };
+			glm::vec3 v1 = { obj.vertex[(i + 1) % vertexCount].x + obj.transform.x, obj.vertex[(i + 1) % vertexCount].y + obj.transform.y, 0.0f };
 
-			if (CheckLineIntersection(lineStart, lineEnd, v0, v1)) {
-				return true; // 교차가 확인되면 바로 충돌로 판정
+			Translate intersection;
+			if (GetIntersectionPoint(lineStart, lineEnd, v0, v1, intersection)) {
+				intersectionCount++;
+				if (intersectionCount == 1) {
+					cp1 = intersection;
+				}
+				else if (intersectionCount == 2) {
+					cp2 = intersection;
+					return true;  // 2개 이상의 변과 교차하면 잘라진 것으로 간주
+				}
 			}
 		}
-		return false;
+		return false;  // 2개 이상의 변을 교차하지 않으면 자르지 않음
 	}
-
 
 
 
@@ -439,6 +452,39 @@
 		return (glm::dot(cross1, cross2) >= 0 && glm::dot(cross2, cross3) >= 0);
 	}
 
+	bool GetIntersectionPoint(const glm::vec3& p1, const glm::vec3& p2, 
+		const glm::vec3& q1, const glm::vec3& q2,Translate& intersection) {
+		// 직선 방정식의 계수 계산
+		float A1 = p2.y - p1.y;
+		float B1 = p1.x - p2.x;
+		float C1 = A1 * p1.x + B1 * p1.y;
+
+		float A2 = q2.y - q1.y;
+		float B2 = q1.x - q2.x;
+		float C2 = A2 * q1.x + B2 * q1.y;
+
+		float det = A1 * B2 - A2 * B1;
+
+		// det가 0이면 두 직선이 평행함
+		if (fabs(det) < 1e-6) {
+			return false;  // 교차점 없음
+		}
+
+		// 두 직선이 교차하므로 교차점 계산
+		intersection.x = (B2 * C1 - B1 * C2) / det;
+		intersection.y = (A1 * C2 - A2 * C1) / det;
+		intersection.z = 0.0f;  // 2D 평면이므로 Z는 0으로 설정
+
+		// 교차점이 두 선분의 범위 내에 있는지 확인
+		if (intersection.x < std::min(p1.x, p2.x) || intersection.x > std::max(p1.x, p2.x) ||
+			intersection.y < std::min(p1.y, p2.y) || intersection.y > std::max(p1.y, p2.y) ||
+			intersection.x < std::min(q1.x, q2.x) || intersection.x > std::max(q1.x, q2.x) ||
+			intersection.y < std::min(q1.y, q2.y) || intersection.y > std::max(q1.y, q2.y)) {
+			return false;  // 교차점이 선분 범위 밖에 있음
+		}
+
+		return true;  // 교차점이 있으며 선분 범위 내에 위치
+	}
 
 
 	GLvoid UpdateVBO(Object object) {
