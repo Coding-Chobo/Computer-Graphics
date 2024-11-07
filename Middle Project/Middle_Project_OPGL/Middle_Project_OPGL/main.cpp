@@ -190,7 +190,7 @@
 				figure.at(i).transform.x += figure.at(i).dx * speed / 3;
 				figure.at(i).transform.y -= figure.at(i).dy * speed/ 2;
 			}
-			figure.at(i).transform.y -= figure.at(i).flight_time * 0.00015f;
+			figure.at(i).transform.y -= figure.at(i).flight_time * 0.0004f;
 		}
 		// 맵 이탈 검사
 		for (auto it = figure.begin(); it != figure.end(); )  // 반복자를 사용하여 순회
@@ -225,6 +225,8 @@
 					figure[i].is_sliced = true;
 					std::cout << "Intersection points: (" << cp1.x << ", " << cp1.y << ", " << cp1.z << ") and ("
 						<< cp2.x << ", " << cp2.y << ", " << cp2.z << ")\n";
+					// 잘린 정점 두개를 이용해서 새로운 도형 2개 생성
+
 				}
 			}
 			eraser_m.vertex.clear();
@@ -413,6 +415,16 @@
 				}
 				else if (intersectionCount == 2) {
 					cp2 = intersection;
+					if (cp1.x > cp2.x) {
+						Translate temp;
+						temp = cp1;
+						cp1 = cp2;
+						cp2 = temp;
+					}
+					cp1.x -= obj.transform.x;
+					cp1.y -= obj.transform.y;
+					cp2.x -= obj.transform.x;
+					cp2.y -= obj.transform.y;
 					return true;  // 2개 이상의 변과 교차하면 잘라진 것으로 간주
 				}
 			}
@@ -480,6 +492,7 @@
 			intersection.y < std::min(p1.y, p2.y) || intersection.y > std::max(p1.y, p2.y) ||
 			intersection.x < std::min(q1.x, q2.x) || intersection.x > std::max(q1.x, q2.x) ||
 			intersection.y < std::min(q1.y, q2.y) || intersection.y > std::max(q1.y, q2.y)) {
+
 			return false;  // 교차점이 선분 범위 밖에 있음
 		}
 
