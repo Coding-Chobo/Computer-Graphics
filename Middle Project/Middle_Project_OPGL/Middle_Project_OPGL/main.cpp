@@ -10,7 +10,7 @@
 	GLuint shaderProgramID; // 세이더 프로그램
 
 	//그려질 오브젝트 선언
-	vector<Object>figure, sliced_figure;
+	vector<Object>figure;
 	Object objfile{};
 	Coordinate Coordinate_system{}, eraser_m{};
 	Camera_Info camera{};
@@ -34,10 +34,10 @@
 		srand(time(NULL));
 		// 윈도우 생성
 		glutInit(&argc, argv);
-		glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA );
+		glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 		glutInitWindowPosition(0, 0);
 		glutInitWindowSize(WIDTH, HEIGHT);
-		glutCreateWindow("OpenGL Practical");
+		glutCreateWindow("Slice Polygon");
 
 		// GLEW 초기화하기
 		glewExperimental = GL_TRUE;
@@ -45,9 +45,8 @@
 
 		// 조명 설정
 
-
 		// 은면제거
-		//glEnable(GL_CULL_FACE);
+		glEnable(GL_CULL_FACE);
 		//glEnable(GL_DEPTH_TEST);
 
 		InitBuffer();
@@ -63,11 +62,13 @@
 		glutSpecialFunc(SpecialKeyboard);
 		glutDisplayFunc(Render);
 		glutTimerFunc(50, Timer, 0);
+
+		glutIdleFunc(mainLoop);
 		glutMainLoop(); //이벤트 루프 진입
 	}
 	//그리는 함수
 	GLvoid Render() {
-		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+		glClearColor(0.8f, 0.5f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT );
 		glUseProgram(shaderProgramID);
 		
@@ -151,23 +152,26 @@
 		float rotate_gap = PI / 20;
 		time_for_craft++;
 		//theta+=2;
+		
 		// 생성조건
 		if (time_for_craft > 40)
 		{
-			float size = (static_cast<float>(rand()) / RAND_MAX)/10.0f + 0.075f;
+			float size = (static_cast<float>(rand()) / RAND_MAX)/20.0f + 0.075f;
+			float shape = rand() % 15 + 3;
 			if (rand() % 10 >= 5)
 			{
-				figure.emplace_back(Make_figure_R(size, 3));
+				figure.emplace_back(Make_figure_R(size, shape));
 			}
 			else
 			{		
-				figure.emplace_back(Make_figure_L(size,3));
+				figure.emplace_back(Make_figure_L(size, shape));
 			}
 			time_for_craft = 0;
 		}
+
+		//------------------------------경로 추가-----------------------------------
 		if (time_for_craft % 3 == 0)
 		{
-			//------------------------------경로 추가-----------------------------------
 			for (int i = 0; i < figure.size(); i++)
 			{
 				figure.at(i).path.vertex.emplace_back(glm::vec3{ figure.at(i).transform.x,figure.at(i).transform.y,0.0f});
@@ -176,6 +180,7 @@
 				figure.at(i).path.indexlist.emplace_back(figure.at(i).path.vertex.size() - 1);
 			}
 		}	
+
 		//중력 부하 및 각각의 방향벡터로 이동
 		for (int i = 0; i < figure.size(); i++)
 		{
@@ -184,14 +189,24 @@
 				//std::cout << " 변환 " << figure.at(i).dx << figure.at(i).dy << std::endl;
 				figure.at(i).transform.x += figure.at(i).dx * speed;
 				figure.at(i).transform.y += figure.at(i).dy * speed;
+				figure.at(i).transform.y -= figure.at(i).flight_time * 0.0004f;
 			}
 			else
 			{
-				figure.at(i).transform.x += figure.at(i).dx * speed / 3;
-				figure.at(i).transform.y -= figure.at(i).dy * speed/ 2;
+				figure.at(i).transform.x += figure.at(i).dx * speed;
+				figure.at(i).transform.y += figure.at(i).dy * speed;
+				figure.at(i).transform.y -= figure.at(i).flight_time * 0.003f;
 			}
-			figure.at(i).transform.y -= figure.at(i).flight_time * 0.0004f;
 		}
+
+
+
+		glutTimerFunc(50, Timer, 0);
+		glutPostRedisplay(); // 다시 그리기 요청
+	}
+
+
+	void mainLoop() {
 		// 맵 이탈 검사
 		for (auto it = figure.begin(); it != figure.end(); )  // 반복자를 사용하여 순회
 		{
@@ -209,27 +224,152 @@
 			}
 		}
 
-		glutTimerFunc(50, Timer, 0);
-		glutPostRedisplay(); // 다시 그리기 요청
+		BoundingBox hitbox = { objfile.transform.x - 0.08f,objfile.transform.y + 0.1f,objfile.transform.x + 0.08f,objfile.transform.y - 0.1f };
+		// 도형과 obj파일 충돌검사
+		for (int i = 0; i < figure.size(); i++) {
+			if (figure[i].is_sliced)
+			{
+				for (int j = 0; j < figure[i].vertex.size(); j++)
+				{
+					glm::vec3 v = { figure[i].transform.x + figure[i].vertex[j].x,figure[i].transform.y + figure[i].vertex[j].y,0 };
+					if (InRectangle(v, hitbox))
+					{
+						float point = figure[i].color[0].r + figure[i].color[0].g + figure[i].color[0].b;
+						point /= 15.0f;
+						for (unsigned k = 0; k < objfile.color.size(); k++)
+						{
+							objfile.color[k].r += point;
+							objfile.color[k].g += point;
+							objfile.color[k].b += point;
+						}
+						figure.erase(figure.begin() + i);
+						break;
+					}
+
+				}
+			}
+		}
+
+		//도형의 회전 0.001도씩 회전
+		for (int i = 0; i < figure.size(); i++) {
+			for (size_t j = 0; j < figure[i].vertex.size(); j++)
+			{	
+				float x = figure[i].vertex[j].x;
+				float y = figure[i].vertex[j].y;
+				figure[i].vertex[j].x = x * cos(glm::radians(0.001f)) - y * sin(glm::radians(0.001f));
+				figure[i].vertex[j].y = x * sin(glm::radians(0.001f)) + y * cos(glm::radians(0.001f));
+			}
+		}
+	}
+
+	bool InRectangle(glm::vec3 p, BoundingBox hitbox) {
+		if (hitbox.left <= p.x && hitbox.right >= p.x)
+		{
+			if (hitbox.bottom <= p.y && hitbox.top >= p.y)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 	void Mouse(int button, int state, int x, int y) {
 		float xpos = static_cast<float>(x) / (WIDTH / 2.0f) - 1.0f;
 		float ypos = 1.0f - static_cast<float>(y) / (HEIGHT / 2.0f);
+
 		if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
 			eraser_m.vertex.emplace_back(glm::vec3{ xpos, ypos, 0.0f });
 			eraser_m.vertex.emplace_back(glm::vec3{ xpos, ypos, 0.0f });
 		}
 		else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
 			for (size_t i = 0; i < figure.size(); ++i) {
+				Translate cp1, cp2;
 				if (CheckCollisionWithPolygon(figure[i], eraser_m.vertex[0], eraser_m.vertex[1], cp1, cp2)) {
-					figure[i].is_sliced = true;
 					std::cout << "Intersection points: (" << cp1.x << ", " << cp1.y << ", " << cp1.z << ") and ("
 						<< cp2.x << ", " << cp2.y << ", " << cp2.z << ")\n";
-					// 잘린 정점 두개를 이용해서 새로운 도형 2개 생성
+					
+					figure[i].is_sliced = true;
+					figure[i].flight_time = 0;
+					// 다각형을 자른 두 개의 새로운 다각형 생성
+					Object newFigure1, newFigure2;
+					SplitPolygonIntoTwo(figure[i], newFigure1, newFigure2, cp1, cp2);
 
+					// figure의 마지막에 새로운 다각형 추가
+					figure.push_back(newFigure1);
+					figure.push_back(newFigure2);
+
+					// 기존 도형 삭제
+					figure.erase(figure.begin() + i);
+					break;
 				}
 			}
 			eraser_m.vertex.clear();
+		}
+	}
+
+	void SplitPolygonIntoTwo(const Object& original, Object& fig1, Object& fig2, const Translate& cp1, const Translate& cp2) {
+		fig1 = original;
+		fig2 = original;
+		fig1.vertex.clear();
+		fig2.vertex.clear();
+		// 교차점 추가
+		fig1.vertex.emplace_back(glm::vec3(cp1.x, cp1.y, cp1.z));
+		fig2.vertex.emplace_back(glm::vec3(cp2.x, cp2.y, cp2.z));
+
+		// 선분의 방향 벡터 계산
+		glm::vec3 lineDirection = glm::vec3(cp2.x - cp1.x, cp2.y - cp1.y, cp2.z - cp1.z);
+
+		// 정점 나누기: 선분을 기준으로 정점을 두 개의 그룹으로 나눔
+		for (const auto& vertex : original.vertex) {
+			// cp1에서 현재 정점까지의 벡터
+			glm::vec3 vertexDirection = glm::vec3(vertex.x - cp1.x, vertex.y - cp1.y, vertex.z - cp1.z);
+
+			// 외적 계산하여 정점의 위치 판단
+			float crossProduct = lineDirection.x * vertexDirection.y - lineDirection.y * vertexDirection.x;
+
+			// 외적 결과에 따라 정점 그룹화
+			if (crossProduct > 0) {
+				fig1.vertex.push_back(vertex);  // 한쪽 다각형에 추가
+			}
+			else {
+				fig2.vertex.push_back(vertex);  // 다른 쪽 다각형에 추가
+			}
+		}
+		
+		// 두 다각형의 끝에 교차점 추가하여 닫기
+		fig1.vertex.push_back(glm::vec3(cp2.x, cp2.y, cp2.z));
+		fig2.vertex.push_back(glm::vec3(cp1.x, cp1.y, cp1.z));
+
+		//정점을 반시계방향으로 정렬
+		SortVerticesCounterClockwise(fig1);
+		SortVerticesCounterClockwise(fig2);
+
+		// 색상과 인덱스 추가
+		AddColors_Indexlist(fig1);
+		AddColors_Indexlist(fig2);
+
+		fig1.dx = -(fig1.dx * 2 / 3);
+		fig2.dx = (fig2.dx * 2 / 3);
+	}
+
+	void AddColors_Indexlist(Object& fig) {
+		unsigned int j = rand() % 3;
+		float c[3]{ 0.4f };
+		c[0] = fig.color[0].r;
+		c[1] = fig.color[0].g;
+		c[2] = fig.color[0].b;
+		fig.color.clear();
+		fig.indexlist.clear();
+		// 색상 임의 지정
+
+		for (int i = 0; i < fig.vertex.size(); i++) {
+			float r = (static_cast<float>(rand()) / RAND_MAX) / 15;
+			float g = (static_cast<float>(rand()) / RAND_MAX) / 15;
+			float b = (static_cast<float>(rand()) / RAND_MAX) / 15;
+			fig.color.emplace_back(glm::vec3{ c[0] + r,c[1] + g,c[2] + b });
+		}
+		// 인덱스 추가 (삼각형을 이루는 방식으로 추가)
+		for (unsigned int i = 1; i < fig.vertex.size() - 1; i++) {
+			fig.indexlist.emplace_back(Index{ 0, i, i + 1 });
 		}
 	}
 
@@ -242,15 +382,16 @@
 			eraser_m.vertex.at(1) = glm::vec3{ xpos ,ypos ,0.0f };
 		}
 	}
+
 	void SpecialKeyboard(int key, int x, int y)
 	{
 		switch (key)
 		{
 		case GLUT_KEY_LEFT:
-			objfile.transform.x -= 0.04f;
+			objfile.transform.x -= 0.02f;
 			break;
 		case GLUT_KEY_RIGHT:
-			objfile.transform.x += 0.04f;
+			objfile.transform.x += 0.02f;
 			break;
 		default:
 			break;
@@ -266,12 +407,6 @@
 		default:
 			break;
 		}
-	}
-
-	void mainLoop() {
-
-
-	
 	}
 
 	void init_figure() {
@@ -309,21 +444,30 @@
 		obj.rotation = { 0.0f,0.0f,0.0f };
 
 		// 정점 추가
-		switch (mode)
+		float each_angle = 360 / mode;
+		if (mode != 7)
 		{
-		case 3:
-			obj.vertex.emplace_back(glm::vec3{ 0.0f,size,0.0f });
-			obj.vertex.emplace_back(glm::vec3{ -0.866f * size,-size / 2,0.0f });
-			obj.vertex.emplace_back(glm::vec3{ 0.866f * size,-size / 2,0.0f });
-			break;
-		default:
-			break;
+			for (int i = 0; i < mode; i++)
+			{
+				obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(each_angle * i)), size * sin(glm::radians(each_angle * i)),0.0f });
+			}
+			SortVerticesCounterClockwise(obj);
+		}
+		else if (mode == 7)
+		{
+
+			obj.vertex.emplace_back(glm::vec3{ 0.0f,size * sin(glm::radians(15.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(40.0f)) -size * cos(glm::radians(15.0f)),size * sin(glm::radians(40.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ -size * cos(glm::radians(40.0f)),size * sin(glm::radians(40.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ -size * cos(glm::radians(15.0f)),size * sin(glm::radians(15.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(270.0f)),size * sin(glm::radians(270.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(15.0f)),size * sin(glm::radians(15.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(40.0f)),size * sin(glm::radians(40.0f)),0.0f });
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(15.0f)) - size * cos(glm::radians(40.0f)),size * sin(glm::radians(40.0f)),0.0f });
 		}
 
-		/*obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });*/
+
+
 		// 색상 추가
 		for (int i = 0; i < obj.vertex.size(); i++)
 		{
@@ -361,21 +505,12 @@
 		obj.rotation = { 0.0f,0.0f,0.0f };
 
 		// 정점 추가
-		switch (mode)
+		float each_angle = 360 / mode;
+		for (int i = 0; i < mode; i++)
 		{
-		case 3:
-			obj.vertex.emplace_back(glm::vec3{ 0.0f,size,0.0f });
-			obj.vertex.emplace_back(glm::vec3{ -0.85f * size,-size / 2,0.0f });
-			obj.vertex.emplace_back(glm::vec3{ 0.85f * size,-size / 2,0.0f });
-			break;
-		default:
-			break;
+			obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(each_angle * i)), size * sin(glm::radians(each_angle * i)),0.0f });
 		}
-
-		/*obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });
-		obj.vertex.emplace_back(glm::vec3{  });*/
+		SortVerticesCounterClockwise(obj);
 
 		// 색상 추가
 		for (int i = 0; i < obj.vertex.size(); i++)
@@ -431,8 +566,6 @@
 		}
 		return false;  // 2개 이상의 변을 교차하지 않으면 자르지 않음
 	}
-
-
 
 	bool CheckLineIntersection(glm::vec3 p1, glm::vec3 p2, glm::vec3 q1, glm::vec3 q2) {
 		// CCW 방식 사용
@@ -492,13 +625,40 @@
 			intersection.y < std::min(p1.y, p2.y) || intersection.y > std::max(p1.y, p2.y) ||
 			intersection.x < std::min(q1.x, q2.x) || intersection.x > std::max(q1.x, q2.x) ||
 			intersection.y < std::min(q1.y, q2.y) || intersection.y > std::max(q1.y, q2.y)) {
-
 			return false;  // 교차점이 선분 범위 밖에 있음
 		}
 
 		return true;  // 교차점이 있으며 선분 범위 내에 위치
 	}
 
+	void SortVerticesCounterClockwise(Object& obj) {
+		// 기준점: 정점들의 중심(무게중심)을 구함
+		glm::vec3 center(0.0f);
+		for (const auto& vertex : obj.vertex) {
+			center += vertex;
+		}
+		center /= static_cast<float>(obj.vertex.size());
+
+		// 각도 계산을 위해 정점을 각도와 함께 저장
+		std::vector<std::pair<glm::vec3, float>> verticesWithAngles;
+		for (const auto& vertex : obj.vertex) {
+			glm::vec3 direction = vertex - center;
+			float angle = atan2(direction.y, direction.x);  // Y축과 X축을 이용해 각도 계산
+			verticesWithAngles.push_back({ vertex, angle });
+		}
+
+		// 각도 기준으로 정렬
+		std::sort(verticesWithAngles.begin(), verticesWithAngles.end(),
+			[](const std::pair<glm::vec3, float>& a, const std::pair<glm::vec3, float>& b) {
+				return a.second < b.second;
+			});
+
+		// 정렬된 정점을 obj.vertex에 다시 저장
+		obj.vertex.clear();
+		for (const auto& vertexWithAngle : verticesWithAngles) {
+			obj.vertex.push_back(vertexWithAngle.first);
+		}
+	}
 
 	GLvoid UpdateVBO(Object object) {
 		// VAO 바인드

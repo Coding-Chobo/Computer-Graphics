@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <optional>
+#include <algorithm>
 //--------------------------------define--------------------------------
 using std::vector;
 //----------------------------- 구조체 선언 -------------------------------
@@ -28,6 +29,12 @@ struct Index
     unsigned int v1;
     unsigned int v2;
     unsigned int v3;
+};
+struct BoundingBox {
+    float left{};
+    float top{};
+    float right{};
+    float bottom{};
 };
 struct Translate
 {
@@ -48,6 +55,7 @@ struct Object {
     Translate scaling;
     Translate rotation;
     Coordinate path;
+    BoundingBox hitbox;
     float dx, dy;
     GLint flight_time;
     bool dir{}; // false면 왼쪽
@@ -82,12 +90,15 @@ GLvoid CreateShaderProgram();
 GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
 void mainLoop();
+bool InRectangle(glm::vec3 p, BoundingBox hitbox);
 
+void SortVerticesCounterClockwise(Object& obj);
 bool CheckCollisionWithPolygon(const Object& obj, glm::vec3 lineStart, glm::vec3 lineEnd, Translate& cp1, Translate& cp2);
 bool CheckLineIntersection(glm::vec3 p1, glm::vec3 p2, glm::vec3 q1, glm::vec3 q2);
 bool IsPointInTriangle(glm::vec3 pt, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2);
 bool GetIntersectionPoint(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& q1, const glm::vec3& q2, Translate& intersection);
-
+void SplitPolygonIntoTwo(const Object& original, Object& fig1, Object& fig2, const Translate& cp1, const Translate& cp2);
+void AddColors_Indexlist(Object& fig);
 
 void init_figure();
 void read_obj_file(const char* filename, Object& model);
