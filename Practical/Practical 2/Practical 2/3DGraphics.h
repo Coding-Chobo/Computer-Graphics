@@ -42,7 +42,10 @@ public:
     Translate scaling;
     Translate rotation;
     glm::mat4 Matrix;
+    void UpdateVBO();
+    void Make_Matrix();
     void Make_Matrix(float size);
+    void Draw_object();
     Object();
 };
 Object::Object() {
@@ -68,6 +71,7 @@ void Make_Tetra(float x, float y, float z, float size, Object& obj);
 void Make_Corn(float x, float y, float z, float size, Object& obj);
 
 void Make_Spiral(float x, float y, float z, Coordinate& obj);
+// 실습 17번
 //큐브 나눠그리기
 void Make_cube_top(Object& obj,float size);
 void Make_cube_bottom(Object& obj, float size);
@@ -87,12 +91,15 @@ void Draw_Cube(float x, float y, float z, float size, Object obj);
 void Draw_Tetra(float x, float y, float z, float size, Object obj);
 GLvoid InitBuffer();
 GLvoid Make_Matrix();
-
-GLvoid Make_Matrix(float& orbit_scale,Object obj);
+GLvoid Make_Matrix(float& orbit_scale, Object obj);
+GLvoid Planet_Matrix(float& orbit_scale,Object obj);
+void Orbit_Path(Coordinate path, Object planet);
+GLvoid Satellite_Matrix(float& orbit_angle, Object obj, Object planet);
 GLvoid init_Matrix();
 GLvoid UpdateVBO(Coordinate object);
 GLvoid UpdateVBO(Object cube);
-
+void AddColors(Object& fig, float r, float g, float b);
+void Make_path();
 GLvoid Keyboard(unsigned char key, int x, int y);
 void Timer(int value); // 타이머 콜백 함수
 void Mouse(int button, int state, int x, int y);

@@ -10,9 +10,8 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
-Object center_sphere{}, shpere_xz{}, shpere_xz_up{}, shpere_xz_down{};
-Object shpere_xz2{}, shpere_xz_up2{}, shpere_xz_down2{};
-Coordinate Coordinate_system{}, path{}, path1{}, path2{}, path3{};
+vector<Object> tank{};
+Coordinate Coordinate_system{};
 Camera_Info camera{};
 
 GLuint vao;
@@ -21,12 +20,12 @@ GLuint EBO;
 
 //실습에 필요한 변수들
 unsigned int shape{ 0 };
-unsigned int which_face{ 0 };
+bool mode_animation[10]{false};
 float theta1 = 0.0f;
 float theta2 = 0.0f;
 float theta3 = 0.0f;
 float size = 0.2f;
-float orbit_size{0.5f};
+float orbit_size{ 0.5f };
 float radius = 0.0f;
 GLfloat orbit_angle{ 0.0f };  // 공전 각도
 
@@ -74,52 +73,13 @@ GLvoid Render() {
 	init_Matrix();
 	Draw_Coordinate(Coordinate_system);
 
-	//궤도 그리기
-	UpdateVBO(path1);
-	glDrawElements(GL_LINE_LOOP, path1.indexlist.size(), GL_UNSIGNED_INT, 0);
-	UpdateVBO(path2);
-	glDrawElements(GL_LINE_LOOP, path2.indexlist.size(), GL_UNSIGNED_INT, 0);
-	UpdateVBO(path3);
-	glDrawElements(GL_LINE_LOOP, path3.indexlist.size(), GL_UNSIGNED_INT, 0);
-
-	UpdateVBO(path);
-	Orbit_Path(path, shpere_xz);
-	glDrawElements(GL_LINE_LOOP, path.indexlist.size(), GL_UNSIGNED_INT, 0);
-	Orbit_Path(path, shpere_xz_up);
-	glDrawElements(GL_LINE_LOOP, path.indexlist.size(), GL_UNSIGNED_INT, 0);
-	Orbit_Path(path, shpere_xz_down);
-	glDrawElements(GL_LINE_LOOP, path.indexlist.size(), GL_UNSIGNED_INT, 0);
-
-
 
 	//obj파일 그리기
-	Planet_Matrix(theta1, center_sphere);
-	UpdateVBO(center_sphere);
-	glDrawElements(GL_TRIANGLES, 3 * center_sphere.indexlist.size(), GL_UNSIGNED_INT, 0);
-	
-	Planet_Matrix(theta1, shpere_xz);
-	UpdateVBO(shpere_xz);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz.indexlist.size(), GL_UNSIGNED_INT, 0);
+	for (int i = 0; i < tank.size(); i++)
+	{
+		tank[i].Draw_object();
+	}
 
-	Planet_Matrix(theta2, shpere_xz_up);
-	UpdateVBO(shpere_xz_up);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz_up.indexlist.size(), GL_UNSIGNED_INT, 0);
-	
-	Planet_Matrix(theta3, shpere_xz_down);
-	UpdateVBO(shpere_xz_down);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz_down.indexlist.size(), GL_UNSIGNED_INT, 0);
-
-	Satellite_Matrix(orbit_angle, shpere_xz2, shpere_xz);
-	UpdateVBO(shpere_xz2);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz2.indexlist.size(), GL_UNSIGNED_INT, 0);
-
-	Satellite_Matrix(orbit_angle, shpere_xz_up2, shpere_xz_up);
-	UpdateVBO(shpere_xz_up2);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz_up2.indexlist.size(), GL_UNSIGNED_INT, 0);
-
-	Satellite_Matrix(orbit_angle, shpere_xz_down2, shpere_xz_down);
-	UpdateVBO(shpere_xz_down2);
-	glDrawElements(GL_TRIANGLES, 3 * shpere_xz_down2.indexlist.size(), GL_UNSIGNED_INT, 0);
 
 	glutSwapBuffers();
 }
@@ -167,8 +127,18 @@ GLvoid init_Matrix() {
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
 
 }
+void Object::Draw_object() {
+	Make_Matrix();
+	UpdateVBO();
+	glDrawElements(GL_TRIANGLES, 3 * this->indexlist.size(), GL_UNSIGNED_INT, 0);
+}
+
+
+
+
+
 //오브젝트별 변환 행렬
-void Object::Make_Matrix(float size) {
+void Object::Make_Matrix() {
 	// 변환 관련 변수를 정의합니다.
 	this->Matrix = glm::translate(this->Matrix, glm::vec3(this->transform.x, this->transform.y, this->transform.z));  // 공전 거리 적용	
 
@@ -179,116 +149,47 @@ void Object::Make_Matrix(float size) {
 	// 크기 변환
 	this->Matrix = glm::scale(this->Matrix, glm::vec3(this->scaling.x, this->scaling.y, this->scaling.z));
 }
-void Orbit_Path(Coordinate path, Object planet) {
-	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
-	// 변환 관련 변수를 정의합니다.
-	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
-	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
-	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
-
-	// 공전 변환: 객체가 원점을 기준으로 회전하게 합니다.
-	//modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 공전
-	
-	modelMatrix = glm::translate(modelMatrix, glm::vec3(planet.transform.x, planet.transform.y, planet.transform.z));  // 이동
-
-	// 카메라 설정
-	viewMatrix = glm::lookAt(
-		glm::vec3(camera.x, camera.y, camera.z), // 카메라 위치
-		glm::vec3(camera.at_x, camera.at_y, camera.at_z), // 카메라가 바라보는 지점
-		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
-	);
-
-	// 투영 설정
-	projectionMatrix = glm::perspective(
-		glm::radians(90.0f), // 시야각
-		(float)WIDTH / (float)HEIGHT, // 종횡비
-		0.1f, 100.0f // 클립 평면 (near, far)
-	);
-
-	// 최종 변환 행렬(MVP)을 계산하여 GPU로 전달
-	glm::mat4 mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
-}
-
-GLvoid Planet_Matrix(float& orbit_angle, Object obj) {
-	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
-	// 변환 관련 변수를 정의합니다.
-	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
-	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
-	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-	obj.Make_Matrix(0.0f);
-
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
-
-	// 공전 변환: 객체가 원점을 기준으로 회전하게 합니다.
-	//modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 공전
-	modelMatrix = modelMatrix * obj.Matrix;
-
-
-	// 카메라 설정
-	viewMatrix = glm::lookAt(
-		glm::vec3(camera.x, camera.y, camera.z), // 카메라 위치
-		glm::vec3(camera.at_x, camera.at_y, camera.at_z), // 카메라가 바라보는 지점
-		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
-	);
-
-	// 투영 설정
-	projectionMatrix = glm::perspective(
-		glm::radians(90.0f), // 시야각
-		(float)WIDTH / (float)HEIGHT, // 종횡비
-		0.1f, 100.0f // 클립 평면 (near, far)
-	);
-
-	// 최종 변환 행렬(MVP)을 계산하여 GPU로 전달
-	glm::mat4 mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
-}
-GLvoid Satellite_Matrix(float& orbit_angle, Object obj,Object planet) {
-	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
-	// 변환 관련 변수를 정의합니다.
-	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
-	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
-	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-	
-	obj.Make_Matrix(0.0f);
-
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
-
-	modelMatrix = glm::translate(modelMatrix, glm::vec3(planet.transform.x, planet.transform.y, planet.transform.z));  // 행성 거리 적용
-
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(orbit_angle), glm::vec3(0.0f, 1.0f, 0.0f));  // 위성 공전 회전
-	
-	//modelMatrix = glm::translate(modelMatrix, glm::vec3(obj.transform.x, obj.transform.y, obj.transform.z));  // 위성 공전 거리 적용
-	
-	modelMatrix = modelMatrix * obj.Matrix;
-
-
-	// 카메라 설정
-	viewMatrix = glm::lookAt(
-		glm::vec3(camera.x, camera.y, camera.z), // 카메라 위치
-		glm::vec3(camera.at_x, camera.at_y, camera.at_z), // 카메라가 바라보는 지점
-		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
-	);
-
-	// 투영 설정
-	projectionMatrix = glm::perspective(
-		glm::radians(90.0f), // 시야각
-		(float)WIDTH / (float)HEIGHT, // 종횡비
-		0.1f, 100.0f // 클립 평면 (near, far)
-	);
-
-	// 최종 변환 행렬(MVP)을 계산하여 GPU로 전달
-	glm::mat4 mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
-	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
-}
-
 void Timer(int value) {
+	if (mode_animation[0])// 크레인 x축 좌 이동
+	{
+		
+	}
+	if (mode_animation[1])// 크레인 x축 우 이동
+	{
 
+	}
+	if (mode_animation[2]) // 중앙 몸체,위 팔 y 축 회전 (양의 방향)
+	{
+
+	}
+	if (mode_animation[3]) // 중앙 몸체,위 팔 y 축 회전 (음의 방향)
+	{
+
+	}
+	if (mode_animation[4])// 포신 y 축 회전 (양의 방향) 서로 반대방향
+	{
+
+	}
+	if (mode_animation[5])// 포신 y 축 회전 (음의 방향) 서로 반대방향
+	{
+
+	}
+	if (mode_animation[6]) //포신 2개 합체
+	{
+
+	}
+	if (mode_animation[7]) //포신 2개 분리
+	{
+
+	}
+	if (mode_animation[8]) // 위의 팔이 z축에 대해 음양으로 서로 반대방향으로 회전 최대 90도씩 
+	{
+
+	}
+	if (mode_animation[9]) // 위의 팔이 z축에 대해 양음으로 서로 반대방향으로 회전 최대 90도씩 
+	{
+
+	}
 }
 void Mouse(int button, int state, int x, int y) {
 
@@ -308,23 +209,50 @@ void SpecialKeyboard(int key, int x, int y)
 GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
-	case 'h':
-		glEnable(GL_CULL_FACE);
+	case 'b':
+		mode_animation[0] = !mode_animation[0];
+		mode_animation[1] = false;
+		break;
+	case 'B':
+		mode_animation[1] = !mode_animation[1];
+		mode_animation[0] = false;
+		break;
+	case 'm':
+		mode_animation[2] = !mode_animation[2];
+		mode_animation[3] = false;
+		break;
+	case 'M':
+		mode_animation[3] = !mode_animation[3];
+		mode_animation[2] = false;
+		break;
+	case 'f':
+		mode_animation[4] = !mode_animation[4];
+		mode_animation[5] = false;
+		break;
+	case 'F':
+		mode_animation[5] = !mode_animation[5];
+		mode_animation[4] = false;
+		break;
+	case 'e':
+		mode_animation[6] = !mode_animation[6];
+		mode_animation[7] = false;
+		break;
+	case 'E':
+		mode_animation[7] = !mode_animation[7];
+		mode_animation[6] = false;
+		break;
+	case 't':
+		mode_animation[8] = !mode_animation[8];
+		mode_animation[9] = false;
+		break;
+	case 'T':
+		mode_animation[9] = !mode_animation[9];
+		mode_animation[8] = false;
 		break;
 	}
 }
 
 void mainLoop() {
-	theta1 += 0.008f;
-	theta2 += 0.005f;
-	theta3 += 0.001f;
-
-	
-	shpere_xz.transform = { cos(theta1),0.0f,sin(theta1) };
-	shpere_xz_up.transform = { cos(theta2),cos(theta2),sin(theta2) };
-	shpere_xz_down.transform = { cos(theta3),-cos(theta3),sin(theta3)};
-
-	orbit_angle += 0.1f;
 
 	glutPostRedisplay(); // 다시 그리기 요청
 }
@@ -332,33 +260,39 @@ void mainLoop() {
 void init_figure(float size) {
 	//---------------------------obj파일-----------------------------
 
+
 	//-----------------월드 변환 좌표 입력--------------------------
 	camera.x = 0.0f, camera.y = 0.0f, camera.z = 2.0f;
 	camera.at_x = 0.0f, camera.at_y = 0.0f, camera.at_z = 0.0f;
 	//---------------------------sphere-----------------------------
-	read_obj_file("sphere.obj", center_sphere);
-	read_obj_file("sphere.obj", shpere_xz);
-	read_obj_file("sphere.obj", shpere_xz_up);
-	read_obj_file("sphere.obj", shpere_xz_down);
-	read_obj_file("sphere.obj", shpere_xz2);
-	read_obj_file("sphere.obj", shpere_xz_up2);
-	read_obj_file("sphere.obj", shpere_xz_down2);
+	Object objfile{};
+	read_obj_file("tank_body.obj", objfile);
+	tank.emplace_back(objfile);
+	read_obj_file("tank_top.obj", objfile);
+	tank.emplace_back(objfile);
+	read_obj_file("tank_stick_xl.obj", objfile);
+	tank.emplace_back(objfile);
+	read_obj_file("tank_stick_xr.obj", objfile);
+	tank.emplace_back(objfile);
+	read_obj_file("tank_stick_yl.obj", objfile);
+	tank.emplace_back(objfile);
+	read_obj_file("tank_stick_yr.obj", objfile);
+	tank.emplace_back(objfile);
 	//-----------------------------색상입히기----------------------------
-	AddColors(shpere_xz, 0.0f, 1.0f, 1.0f);
-	AddColors(shpere_xz_up, 0.0f, 1.0f, 1.0f);
-	AddColors(shpere_xz_down, 0.0f, 1.0f, 1.0f);
-	AddColors(shpere_xz2, 1.0f, 0.5f, 0.5f);
-	AddColors(shpere_xz_up2, 1.0f, 0.5f, 0.5f);
-	AddColors(shpere_xz_down2, 1.0f, 0.5f, 0.5f);
+	AddColors(tank[0], 0.8f, 0.0f, 0.0f);
+	AddColors(tank[1], 0.8f, 0.8f, 0.8f);
+
+	AddColors(tank[2], 0.8f, 0.8f, 0.0f);
+	AddColors(tank[3], 0.8f, 0.8f, 0.0f);
+
+	AddColors(tank[4], 0.0f, 0.8f, 0.8f);
+	AddColors(tank[5], 0.0f, 0.8f, 0.8f);
 	//-------------------------변환정보 입력--------------------------
-	shpere_xz.scaling = shpere_xz_up.scaling = shpere_xz_down.scaling = { 15.0f,15.0f,15.0f };
-	shpere_xz2.scaling = shpere_xz_up2.scaling = shpere_xz_down2.scaling = { 10.0f,10.0f,10.0f };
-	shpere_xz2.transform = shpere_xz_up2.transform = shpere_xz_down2.transform = { orbit_size,0.0f,0.0f };
-	//
-	Make_path();
+	
+	
 }
 
-void AddColors(Object& fig,float r, float g, float b) {
+void AddColors(Object& fig, float r, float g, float b) {
 	fig.color.clear();
 	// 색상 입히기
 	for (int i = 0; i < fig.vertex.size(); i++) {
@@ -366,26 +300,6 @@ void AddColors(Object& fig,float r, float g, float b) {
 	}
 }
 
-void Make_path(){
-	float theta{10.0f};
-	for (int i = 0; i < 36; i++)
-	{
-		path.vertex.emplace_back(glm::vec3{ cos(glm::radians(i * theta)) / 2,0.0f,sin(glm::radians(i * theta)) / 2 });
-		path1.vertex.emplace_back(glm::vec3{ cos(glm::radians(i * theta)),0.0f,sin(glm::radians(i * theta)) });
-		path2.vertex.emplace_back(glm::vec3{ cos(glm::radians(i * theta)), cos(glm::radians(i * theta)),sin(glm::radians(i * theta)) });
-		path3.vertex.emplace_back(glm::vec3{ cos(glm::radians(i * theta)), -cos(glm::radians(i * theta)),sin(glm::radians(i * theta)) });
-		//
-		path.indexlist.emplace_back(i);
-		path1.indexlist.emplace_back(i);
-		path2.indexlist.emplace_back(i);
-		path3.indexlist.emplace_back(i);
-		//
-		path.color.emplace_back(glm::vec3{ 1.0f,1.0f ,1.0f });
-		path1.color.emplace_back(glm::vec3{ 1.0f,1.0f ,1.0f });
-		path2.color.emplace_back(glm::vec3{ 1.0f,1.0f ,1.0f });
-		path3.color.emplace_back(glm::vec3{ 1.0f,1.0f ,1.0f });
-	};
-}
 
 void Draw_Coordinate(Coordinate obj) {
 	obj.vertex.clear();

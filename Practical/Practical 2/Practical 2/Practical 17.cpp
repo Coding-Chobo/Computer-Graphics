@@ -203,7 +203,7 @@ GLvoid Make_Matrix(float& orbit_angle, Object obj) {
 	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
 	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
 	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-	obj.Make_Matrix(size);
+	obj.Make_Matrix(0.0f);
 
 
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
