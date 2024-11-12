@@ -10,6 +10,7 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
+Object board{};
 vector<Object> tank{};
 Coordinate Coordinate_system{};
 Camera_Info camera{};
@@ -21,10 +22,12 @@ GLuint EBO;
 //실습에 필요한 변수들
 unsigned int shape{ 0 };
 bool mode_animation[10]{false};
-float theta1 = 0.0f;
-float theta2 = 0.0f;
-float theta3 = 0.0f;
+unsigned int camera_animation{ false };
+int count{};
+
 float size = 0.2f;
+float dir_x = 0.0f;
+float dir_z = 0.0f;
 float orbit_size{ 0.5f };
 float radius = 0.0f;
 GLfloat orbit_angle{ 0.0f };  // 공전 각도
@@ -59,6 +62,7 @@ void main(int argc, char** argv)
 	glutMotionFunc(Motion);
 	glutKeyboardFunc(Keyboard);
 	glutSpecialFunc(SpecialKeyboard);
+	glutTimerFunc(50, Timer, 0);
 	glutDisplayFunc(Render);
 	glutIdleFunc(mainLoop); // 메인 루프
 	glutMainLoop(); //이벤트 루프 진입
@@ -73,8 +77,10 @@ GLvoid Render() {
 	init_Matrix();
 	Draw_Coordinate(Coordinate_system);
 
+	//보드 그리기
+	board.Draw_object();
 
-	//obj파일 그리기
+	//탱크 그리기
 	for (int i = 0; i < tank.size(); i++)
 	{
 		tank[i].Draw_object();
@@ -102,8 +108,6 @@ GLvoid init_Matrix() {
 	// 모델 변환
 	modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, 0.0f));
 	modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f, 0.5f, 0.5f));
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	// 카메라 설정: 카메라 위치, 카메라가 바라보는 위치, 월드 업 벡터
 	viewMatrix = glm::lookAt(
@@ -127,69 +131,171 @@ GLvoid init_Matrix() {
 	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
 
 }
+
 void Object::Draw_object() {
 	Make_Matrix();
 	UpdateVBO();
 	glDrawElements(GL_TRIANGLES, 3 * this->indexlist.size(), GL_UNSIGNED_INT, 0);
 }
 
-
-
-
-
 //오브젝트별 변환 행렬
 void Object::Make_Matrix() {
+	unsigned int modelLocation = glGetUniformLocation(shaderProgramID, "trans");
 	// 변환 관련 변수를 정의합니다.
-	this->Matrix = glm::translate(this->Matrix, glm::vec3(this->transform.x, this->transform.y, this->transform.z));  // 공전 거리 적용	
+	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
+	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
+	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
+	// 변환 관련 변수를 정의합니다.
+	
+	modelMatrix = glm::translate(modelMatrix, glm::vec3(this->transform.x, this->transform.y, this->transform.z));
 
 	// 제자리 회전: 공전된 위치에서 객체를 제자리에서 회전시킵니다.
-	//this->Matrix = glm::rotate(this->Matrix, glm::radians(rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
-	//this->Matrix = glm::rotate(this->Matrix, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
-	//this->Matrix = glm::rotate(this->Matrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));  // Z축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(this->rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));  // Y축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(this->rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
+	modelMatrix = glm::rotate(modelMatrix, glm::radians(this->rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));  // Z축 회전
 	// 크기 변환
-	this->Matrix = glm::scale(this->Matrix, glm::vec3(this->scaling.x, this->scaling.y, this->scaling.z));
+	modelMatrix = glm::scale(modelMatrix, glm::vec3(this->scaling.x, this->scaling.y, this->scaling.z));
+
+	viewMatrix = glm::lookAt(
+		glm::vec3(camera.x, camera.y, camera.z), // 카메라 위치
+		glm::vec3(camera.at_x, camera.at_y, camera.at_z), // 카메라가 바라보는 지점
+		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
+	);
+
+	// 투영 설정
+	projectionMatrix = glm::perspective(
+		glm::radians(90.0f), // 시야각
+		(float)WIDTH / (float)HEIGHT, // 종횡비
+		0.1f, 100.0f // 클립 평면 (near, far)
+	);
+
+	// 최종 변환 행렬(MVP)을 계산하여 GPU로 전달
+	glm::mat4 mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
+	glUniformMatrix4fv(modelLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
 }
+
+
 void Timer(int value) {
 	if (mode_animation[0])// 크레인 x축 좌 이동
 	{
-		
+		for (int i = 0; i < tank.size(); i++)
+		{
+			if (tank[i].transform.x > 2.2f && dir_x > 0.0)
+			{
+				dir_x = -1.0f;
+			}
+			else if (tank[i].transform.x < -2.2f && dir_x < 0.0)
+			{
+				dir_x = 1.0f;
+			}
+			tank[i].transform.x += dir_x * 0.05f;
+		}
 	}
-	if (mode_animation[1])// 크레인 x축 우 이동
+	else if (mode_animation[1])// 크레인 x축 좌우 이동
 	{
-
+		for (int i = 0; i < tank.size(); i++)
+		{
+			if (tank[i].transform.x > 2.2f && dir_x > 0.0)
+			{
+				dir_x = -1.0f;
+			}
+			else if (tank[i].transform.x < -2.2f && dir_x < 0.0)
+			{
+				dir_x = 1.0f;
+			}
+			tank[i].transform.x += dir_x * 0.05f;
+		}
 	}
 	if (mode_animation[2]) // 중앙 몸체,위 팔 y 축 회전 (양의 방향)
 	{
-
+		for (int i = 3; i < tank.size(); i++)
+		{
+			tank[i].rotation.y += 1.0f;
+		}
 	}
-	if (mode_animation[3]) // 중앙 몸체,위 팔 y 축 회전 (음의 방향)
+	else if (mode_animation[3]) // 중앙 몸체,위 팔 y 축 회전 (음의 방향)
 	{
-
+		for (int i = 3; i < tank.size(); i++)
+		{
+			tank[i].rotation.y -= 1.0f;
+		}
 	}
 	if (mode_animation[4])// 포신 y 축 회전 (양의 방향) 서로 반대방향
 	{
-
+		tank[1].rotation.y += 1.0f;
+		tank[2].rotation.y -= 1.0f;
 	}
-	if (mode_animation[5])// 포신 y 축 회전 (음의 방향) 서로 반대방향
+	else if (mode_animation[5])// 포신 y 축 회전 (음의 방향) 서로 반대방향
 	{
-
+		tank[1].rotation.y -= 1.0f;
+		tank[2].rotation.y += 1.0f;
 	}
+
 	if (mode_animation[6]) //포신 2개 합체
-	{
-
+	{	
+		if (count < 50)
+		{
+			for (size_t i = 0; i < 8; i++)
+			{
+				tank[1].vertex[i].x += 0.0035f;
+				tank[2].vertex[i].x -= 0.0035f;
+			}
+			count++;
+		}
 	}
-	if (mode_animation[7]) //포신 2개 분리
+	else if (mode_animation[7]) //포신 2개 분리
 	{
-
+		if (count > 0)
+		{
+			for (size_t i = 0; i < 8; i++)
+			{
+				tank[1].vertex[i].x -= 0.0035f;
+				tank[2].vertex[i].x += 0.0035f;
+			}
+			count--;
+		}
 	}
 	if (mode_animation[8]) // 위의 팔이 z축에 대해 음양으로 서로 반대방향으로 회전 최대 90도씩 
 	{
-
+		if (tank[4].rotation.x > 70)
+		{
+			dir_z = -1.0f;
+		}
+		else if (tank[4].rotation.x < -70)
+		{
+			dir_z = 1.0f;
+		}
+		tank[4].rotation.x += 2 * dir_z;
+		tank[5].rotation.x -= 2 * dir_z;
 	}
 	if (mode_animation[9]) // 위의 팔이 z축에 대해 양음으로 서로 반대방향으로 회전 최대 90도씩 
 	{
-
+		if (tank[4].rotation.x > 90)
+		{
+			dir_z = -1.0f;
+		}
+		else if (tank[4].rotation.x < -90)
+		{
+			dir_z = 1.0f;
+		}
+		tank[4].rotation.x += 2 * dir_z;
+		tank[5].rotation.x -= 2 * dir_z;
 	}
+	if (camera_animation == 1)
+	{
+		float cx = camera.x;
+		float cz = camera.z;
+		camera.x = cx * cos(glm::radians(2.0f)) - cz * sin(glm::radians(2.0f));
+		camera.z = cx * sin(glm::radians(2.0f)) + cz * cos(glm::radians(2.0f));
+	}
+	else if (camera_animation == 2)
+	{
+		float cx = camera.x;
+		float cz = camera.z;
+		camera.x = cx * cos(glm::radians(-2.0f)) - cz * sin(glm::radians(-2.0f));
+		camera.z = cx * sin(glm::radians(-2.0f)) + cz * cos(glm::radians(-2.0f));
+	}
+	glutTimerFunc(50, Timer, 0);
 }
 void Mouse(int button, int state, int x, int y) {
 
@@ -201,19 +307,22 @@ void SpecialKeyboard(int key, int x, int y)
 {
 	switch (key)
 	{
-
+	
 	default:
 		break;
 	}
 }
 GLvoid Keyboard(unsigned char key, int x, int y) {
+
 	switch (key)
 	{
 	case 'b':
+		dir_x = 1.0f;
 		mode_animation[0] = !mode_animation[0];
 		mode_animation[1] = false;
 		break;
 	case 'B':
+		dir_x = -1.0f;
 		mode_animation[1] = !mode_animation[1];
 		mode_animation[0] = false;
 		break;
@@ -242,12 +351,61 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 		mode_animation[6] = false;
 		break;
 	case 't':
+		dir_z = 1.0f;
 		mode_animation[8] = !mode_animation[8];
 		mode_animation[9] = false;
 		break;
 	case 'T':
+		dir_z = -1.0f;
 		mode_animation[9] = !mode_animation[9];
 		mode_animation[8] = false;
+		break;
+	case 'w':
+		camera.z -= 0.1f;
+		break;
+	case 's':
+		camera.z += 0.1f;
+		break;
+	case 'a':
+		camera.x -= 0.1f;
+		break;
+	case 'd':
+		camera.x += 0.1f;
+		break;
+	case 'x':
+		camera.y -= 0.1f;
+		break;
+	case 32:
+		camera.y += 0.1f;
+		break;
+	case 'r':
+		camera.at_x = camera.at_y = camera.at_z = 0.0f;
+		camera_animation = 1;
+		break;
+	case 'R':
+		camera.at_x = camera.at_y = camera.at_z = 0.0f;
+		camera_animation = 2;
+		break;
+	case 'v': // 기존의 a
+		camera.at_x = camera.at_y = camera.at_z = 0.0f;
+		camera_animation = 1;
+		break;
+	case 'V':
+		camera.at_x = camera.at_y = camera.at_z = 0.0f;
+		camera_animation = 0;
+		break;
+	case '4':
+		for (int i = 0; i < 10; i++)
+		{
+			mode_animation[i] = false;
+		}
+		camera_animation = 0;
+		break;
+	case 'c': case 'C':
+		init_figure(0.0f);
+		break;
+	case 'q':
+		exit(0);
 		break;
 	}
 }
@@ -259,37 +417,66 @@ void mainLoop() {
 
 void init_figure(float size) {
 	//---------------------------obj파일-----------------------------
-
-
+	tank.clear();
+	Make_Board(board, 2.5f);
 	//-----------------월드 변환 좌표 입력--------------------------
-	camera.x = 0.0f, camera.y = 0.0f, camera.z = 2.0f;
+	camera.x = 0.0f, camera.y = 2.0f, camera.z = 4.0f;
 	camera.at_x = 0.0f, camera.at_y = 0.0f, camera.at_z = 0.0f;
 	//---------------------------sphere-----------------------------
 	Object objfile{};
 	read_obj_file("tank_body.obj", objfile);
 	tank.emplace_back(objfile);
-	read_obj_file("tank_top.obj", objfile);
-	tank.emplace_back(objfile);
 	read_obj_file("tank_stick_xl.obj", objfile);
 	tank.emplace_back(objfile);
 	read_obj_file("tank_stick_xr.obj", objfile);
+	tank.emplace_back(objfile);
+
+	read_obj_file("tank_top.obj", objfile);
 	tank.emplace_back(objfile);
 	read_obj_file("tank_stick_yl.obj", objfile);
 	tank.emplace_back(objfile);
 	read_obj_file("tank_stick_yr.obj", objfile);
 	tank.emplace_back(objfile);
+	for (int i = 0; i < tank.size(); i++)
+	{
+		for (size_t j = 0; j < 8; j++)
+		{
+			tank[i].vertex[j].y += 0.3f;
+		}
+	}
+	tank[4].transform.y = tank[4].vertex[0].y;
+	tank[5].transform.y = tank[5].vertex[0].y;
+	for (size_t j = 0; j < 8; j++)
+	{
+		tank[4].vertex[j].y -= tank[4].transform.y;
+		tank[5].vertex[j].y -= tank[5].transform.y;
+	}
+
 	//-----------------------------색상입히기----------------------------
 	AddColors(tank[0], 0.8f, 0.0f, 0.0f);
-	AddColors(tank[1], 0.8f, 0.8f, 0.8f);
 
+	AddColors(tank[1], 0.8f, 0.8f, 0.0f);
 	AddColors(tank[2], 0.8f, 0.8f, 0.0f);
-	AddColors(tank[3], 0.8f, 0.8f, 0.0f);
+
+	AddColors(tank[3], 0.8f, 0.8f, 0.8f);
 
 	AddColors(tank[4], 0.0f, 0.8f, 0.8f);
 	AddColors(tank[5], 0.0f, 0.8f, 0.8f);
 	//-------------------------변환정보 입력--------------------------
 	
 	
+}
+
+void Make_Board(Object& obj, float size) {
+	obj.vertex.emplace_back(glm::vec3{ size,0.0f,size });
+	obj.vertex.emplace_back(glm::vec3{ size,0.0f,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,0.0f,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,0.0f,size });
+	AddColors(obj, 0.8f, 0.8f, 1.0f);
+	for (unsigned int i = 1; i < obj.vertex.size()-1; i++)
+	{
+		obj.indexlist.emplace_back(Index{ 0, i, i + 1 });
+	}
 }
 
 void AddColors(Object& fig, float r, float g, float b) {
@@ -299,7 +486,6 @@ void AddColors(Object& fig, float r, float g, float b) {
 		fig.color.emplace_back(glm::vec3{ r,g,b });
 	}
 }
-
 
 void Draw_Coordinate(Coordinate obj) {
 	obj.vertex.clear();
@@ -535,7 +721,7 @@ void read_obj_file(const char* filename, Object& model) {
 		model.color.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // 흰색으로 설정
 	}
 	model.transform = { 0.0f,0.0f,0.0f };
-	model.scaling = { 20.0f,20.0f,20.0f };
+	model.scaling = { 1.0f,1.0f,1.0f };
 	model.rotation = { 0.0f,0.0f,0.0f };
 	UpdateVBO(model);
 }

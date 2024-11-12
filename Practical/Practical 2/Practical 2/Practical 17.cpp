@@ -37,6 +37,8 @@ bool mode_topspin{ false };
 bool mode_animate[6]{ 0 };
 bool is_open{ false };
 bool is_open2{ false };
+int dir_y{};
+int dir_s{};
 //-----------------------------------------------------------------------
 void main(int argc, char** argv)
 {
@@ -203,7 +205,7 @@ GLvoid Make_Matrix(float& orbit_angle, Object obj) {
 	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
 	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
 	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-	obj.Make_Matrix(0.0f);
+	obj.Make_Matrix(0.2f);
 
 
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전
@@ -326,6 +328,7 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 
 void mainLoop() {
 	float rotate_gap = 0.10f;
+	float moving_gap = 0.001f;
 	if (mode_spin)
 	{
 		orbit_angle_y += rotate_gap;
@@ -334,19 +337,64 @@ void mainLoop() {
 	{
 		cube_top.rotation.x += rotate_gap;
 	}
-	if (mode_animate[1])
+	if (mode_animate[1]) // 앞
 	{
-		cube_front.rotation.x += rotate_gap;
+		if (cube_front.rotation.x < 90.0f)
+		{
+			cube_front.rotation.x += rotate_gap;
+		}
 	}
-	if (mode_animate[2])
+	else
 	{
-		cube_right.rotation.z -= rotate_gap;
-		cube_left.rotation.z += rotate_gap;
+		if (cube_front.rotation.x > 0.0f)
+		{
+			cube_front.rotation.x -= rotate_gap;
+		}
+		else
+		{
+			cube_front.rotation.x = 0.0f;
+		}
 	}
-	if (mode_animate[3])
+	if (mode_animate[2])// 옆
 	{
-		cube_back.rotation.x -= rotate_gap;
+		if (cube_right.transform.y < 0.5f)
+		{
+			cube_right.transform.y += moving_gap;
+			cube_left.transform.y += moving_gap;
+		}
 	}
+	else
+	{
+		if (cube_right.transform.y > 0.0f)
+		{
+			cube_right.transform.y -= moving_gap;
+			cube_left.transform.y -= moving_gap;
+		}
+		else
+		{
+			cube_left.transform.y = 0;
+			cube_right.transform.y = 0;
+		}
+	}
+	if (mode_animate[3]) // 뒤
+	{
+		if (cube_back.scaling.x > 0)
+		{
+			cube_back.scaling.x -= moving_gap;
+			cube_back.scaling.y -= moving_gap;
+			cube_back.scaling.z -= moving_gap;
+		}
+	}
+	else
+	{
+		if (cube_back.scaling.x < 1.0f)
+		{
+			cube_back.scaling.x += moving_gap;
+			cube_back.scaling.y += moving_gap;
+			cube_back.scaling.z += moving_gap;
+		}
+	}
+
 	if (mode_animate[4])
 	{
 		if (quad_pyra_front.rotation.x < 270.0f&&is_open)

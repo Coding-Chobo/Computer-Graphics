@@ -86,6 +86,10 @@ void Make_quad_pyra_Right(Object& obj, float size);
 void Make_quad_pyra_front(Object& obj, float size);
 void Make_quad_pyra_back(Object& obj, float size);
 
+//½Ç½À 18¹ø
+void Make_Board(Object&obj, float size);
+
+
 void Draw_Coordinate(Coordinate obj);
 void Draw_Cube(float x, float y, float z, float size, Object obj);
 void Draw_Tetra(float x, float y, float z, float size, Object obj);
