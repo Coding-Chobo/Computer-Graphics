@@ -382,7 +382,6 @@
 		fig.color.clear();
 		fig.indexlist.clear();
 		// 색상 임의 지정
-
 		for (int i = 0; i < fig.vertex.size(); i++) {
 			float r = (static_cast<float>(rand()) / RAND_MAX) / 10;
 			float g = (static_cast<float>(rand()) / RAND_MAX) / 10;

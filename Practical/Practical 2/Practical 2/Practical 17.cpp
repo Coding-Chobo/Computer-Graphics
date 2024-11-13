@@ -178,12 +178,12 @@ GLvoid init_Matrix() {
 
 }
 
-void Object::Make_Matrix(float size) {
+void Object::Make_Matrix() {
 	// 변환 관련 변수를 정의합니다.
 	this->Matrix = glm::translate(this->Matrix, glm::vec3(this->transform.x, this->transform.y, this->transform.z));  // 공전 거리 적용
 	if (this->transform.y != cube_top.transform.y && shape == 0)
 	{
-		this->Matrix = glm::translate(this->Matrix, glm::vec3(0.0f, -size, 0.0f));
+		this->Matrix = glm::translate(this->Matrix, glm::vec3(0.0f, -0.2f, 0.0f));
 	}
 
 	// 제자리 회전: 공전된 위치에서 객체를 제자리에서 회전시킵니다.
@@ -192,7 +192,7 @@ void Object::Make_Matrix(float size) {
 	this->Matrix = glm::rotate(this->Matrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));  // Z축 회전
 	if (this->transform.y != cube_top.transform.y && shape == 0)
 	{
-		this->Matrix = glm::translate(this->Matrix, glm::vec3(0.0f, size, 0.0f));
+		this->Matrix = glm::translate(this->Matrix, glm::vec3(0.0f, 0.2f, 0.0f));
 	}
 	// 크기 변환
 	Matrix = glm::scale(this->Matrix, glm::vec3(scaling.x, scaling.y, scaling.z));
@@ -205,7 +205,7 @@ GLvoid Make_Matrix(float& orbit_angle, Object obj) {
 	glm::mat4 modelMatrix = glm::mat4(1.0f);  // 모델 변환
 	glm::mat4 viewMatrix = glm::mat4(1.0f);   // 뷰 변환 (카메라 변환)
 	glm::mat4 projectionMatrix = glm::mat4(1.0f); // 투영 변환 (프로젝션 변환)
-	obj.Make_Matrix(0.2f);
+	obj.Make_Matrix();
 
 
 	modelMatrix = glm::rotate(modelMatrix, glm::radians(30.f), glm::vec3(1.0f, 0.0f, 0.0f));  // X축 회전

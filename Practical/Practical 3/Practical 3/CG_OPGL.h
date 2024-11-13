@@ -56,6 +56,7 @@ public:
     XYZ scaling{};
     XYZ rotation{};
     BoundingBox hitbox{};
+    Camera_Info camera{};
     float speed{};
     float dir_x{};
     float dir_z{};
@@ -78,7 +79,7 @@ Object::Object() {
     //camera.u = { 0.0, 0.0, 1.0f };
     //camera.v = { 0.0, 1.0f, 0.0 };
     //camera.n = { 1.0f, 0.0, 0.0 };
-    
+
 }
 
 struct Coordinate {
@@ -92,14 +93,10 @@ void read_newline(char* str) {
     if ((pos = strchr(str, '\n')) != NULL)
         *pos = '\0';
 }
-void Make_Cube(float x, float y, float z, float size, Object& obj);
-void Make_Tetra(float x, float y, float z, float size, Object& obj);
-void Make_Corn(float x, float y, float z, float size, Object& obj);
 
-void Make_Spiral(float x, float y, float z, Coordinate& obj);
 // 실습 17번
 //큐브 나눠그리기
-void Make_cube_top(Object& obj,float size);
+void Make_cube_top(Object& obj, float size);
 void Make_cube_bottom(Object& obj, float size);
 void Make_cube_Left(Object& obj, float size);
 void Make_cube_Right(Object& obj, float size);
@@ -107,39 +104,19 @@ void Make_cube_front(Object& obj, float size);
 void Make_cube_back(Object& obj, float size);
 void Make_cube_front_left(Object& obj, float size);
 void Make_cube_front_right(Object& obj, float size);
-//사각뿔 그리기
-void Make_quad_pyra_bottom(Object& obj, float size);
-void Make_quad_pyra_Left(Object& obj, float size);
-void Make_quad_pyra_Right(Object& obj, float size);
-void Make_quad_pyra_front(Object& obj, float size);
-void Make_quad_pyra_back(Object& obj, float size);
 
-void Make_path();
-//실습 18번
-void Make_Board(Object&obj, float size);
-void Make_Block(Object& obj, float size);
 //실습 20번
 void init_camera();
-void RenderScene();
-
+void Make_Block(Object& obj, float size);
 
 //
 void checkFrameBuffer();
 
 void is_walkable();
 void Draw_Coordinate(Coordinate obj);
-void Draw_Cube(float x, float y, float z, float size, Object obj);
-void Draw_Tetra(float x, float y, float z, float size, Object obj);
-
 GLvoid InitBuffer();
-GLvoid Make_Matrix();
-GLvoid Make_Matrix(float& orbit_scale, Object obj);
-GLvoid Planet_Matrix(float& orbit_scale,Object obj);
-void Orbit_Path(Coordinate path, Object planet);
 GLvoid Satellite_Matrix(float& orbit_angle, Object obj, Object planet);
-GLvoid init_Matrix();
-GLvoid UpdateVBO(Coordinate object);
-GLvoid UpdateVBO(Object cube);
+
 void AddColors(Object& fig, float r, float g, float b);
 void AddColors_Indexlist(Object& fig, float r, float g, float b);
 
@@ -153,6 +130,5 @@ GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
 void mainLoop();
 void SpecialKeyboard(int key, int x, int y);
-void init_figure(float size);
 void init_figure();
 void read_obj_file(const char* filename, Object& model);
