@@ -16,13 +16,19 @@
 //--------------------------------define--------------------------------
 using std::vector;
 //----------------------------- 구조체 선언 -------------------------------
-struct Camera_Info
+struct FreeCamera
 {
     GLfloat x, y, z;
-    //GLfloat* x, * y, * z;
     GLfloat at_x, at_y, at_z;
-
-    glm::vec3 u{}, v{}, n{};
+    glm::vec3 forward{}, up{}, right{};
+    void rotation_camera_vector_xz(float angle);
+};
+class FixedCamera
+{    
+public:
+    GLfloat *x, *y, *z;
+    glm::vec3 forward{}, up{}, right{};
+    void rotation_camera_vector_xz(float angle);
 };
 struct Index
 {
@@ -55,16 +61,18 @@ public:
     XYZ transform{};
     XYZ scaling{};
     XYZ rotation{};
+    XYZ tps_position{};
     BoundingBox hitbox{};
-    Camera_Info camera{};
     float speed{};
+    float sensitivity{};
+    glm::vec3 direction{};
+    bool is_jump{};
+    bool is_move{};
+    int flight_time{};
     float dir_x{};
     float dir_z{};
-    bool is_jump{};
-    int flight_time{};
     glm::mat4 Matrix;
     void UpdateVBO();
-    //void Update_Camera();
     void Make_Matrix();
     void Draw_object();
     void UpdateBoundingBox();
@@ -75,11 +83,7 @@ Object::Object() {
     transform = { 0.0f,0.0f,0.0f };
     rotation = { 0.0f,0.0f,0.0f };
     scaling = { 1.0f,1.0f ,1.0f };
-    //camera.x, camera.y, camera.z = &transform.x, & transform.y, & transform.z;
-    //camera.u = { 0.0, 0.0, 1.0f };
-    //camera.v = { 0.0, 1.0f, 0.0 };
-    //camera.n = { 1.0f, 0.0, 0.0 };
-
+    sensitivity = 4.0;
 }
 
 struct Coordinate {
@@ -94,7 +98,7 @@ void read_newline(char* str) {
         *pos = '\0';
 }
 
-// 실습 17번
+void init_figure();
 //큐브 나눠그리기
 void Make_cube_top(Object& obj, float size);
 void Make_cube_bottom(Object& obj, float size);
@@ -105,17 +109,20 @@ void Make_cube_back(Object& obj, float size);
 void Make_cube_front_left(Object& obj, float size);
 void Make_cube_front_right(Object& obj, float size);
 
-//실습 20번
-void init_camera();
 void Make_Block(Object& obj, float size);
 
-//
+void Draw_Coordinate(Coordinate obj);
+
+//카메라
+void init_camera();
+void Update_camera(float angle_xz, float angle_y);
+
+//버퍼 관련
 void checkFrameBuffer();
+GLvoid InitBuffer();
 
 void is_walkable();
-void Draw_Coordinate(Coordinate obj);
-GLvoid InitBuffer();
-GLvoid Satellite_Matrix(float& orbit_angle, Object obj, Object planet);
+bool is_crash(Object& objA, Object& objB);
 
 void AddColors(Object& fig, float r, float g, float b);
 void AddColors_Indexlist(Object& fig, float r, float g, float b);
@@ -124,11 +131,14 @@ GLvoid Keyboard(unsigned char key, int x, int y);
 void Timer(int value); // 타이머 콜백 함수
 void Mouse(int button, int state, int x, int y);
 void Motion(int x, int y);
+void passiveMotion(int x, int y);
+void SpecialKeyboard(int key, int x, int y);
+GLvoid KeyUp(unsigned char key, int x, int y);
+
 GLint CreateShader(const char* file, int type);
 GLvoid CreateShaderProgram();
 GLvoid Render(GLvoid);
 GLvoid Reshape(int w, int h);
 void mainLoop();
-void SpecialKeyboard(int key, int x, int y);
-void init_figure();
+
 void read_obj_file(const char* filename, Object& model);
