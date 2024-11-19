@@ -259,50 +259,92 @@ GLvoid UpdateVBO(Coordinate object) {
 
 void Timer(int value) {
 	//이동 충돌검사
-	for (int i = 0; i < rcnt; i++)
-	{
-		if (robot[i].transform.x > 2.0f)
+	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f) {
+		bool turn_x{ false }, turn_z{ false };
+		RobotMove(1);
+		if (!is_inMap())
 		{
-			robot[0].is_move = false;
+			turn_z = true;
 		}
-		else if (robot[i].transform.x < -2.0f)
+		RobotMove(2);
+		RobotMove(3);
+		if (!is_inMap())
 		{
-			robot[0].is_move = false;
+			turn_x = true;
 		}
-		if (robot[i].transform.z < -2.0f)
+		RobotMove(4);
+		if (turn_x)
 		{
-			robot[0].is_move = false;
+			robot[0].dir_x *= -1;
 		}
-		else if (robot[i].transform.z > 2.0f)
+		if (turn_z)
 		{
-			robot[0].is_move = false;
+			robot[0].dir_z *= -1;
 		}
+		//장애물과 xz평면 검사
+		if (!robot[0].is_jump)
+		{
+			// 장애물과 z축 이동 검사
+			RobotMove(1);
+			for (size_t i = 0; i < block.size(); i++)
+			{
+				if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
+				{
+					float robotBottomY = robot[5].vertex[0].y;
+					for (const auto& v : robot[5].vertex) {
+						robotBottomY = std::min(robotBottomY, v.y);
+					}
+					robotBottomY += robot[5].transform.y;
+					bool isLandingOnTop =
+						// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
+						robotBottomY <= block_size + 0.02f && robotBottomY >= block_size - 0.02f &&
+						robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
+						robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
+						robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
+						robot[5].transform.z <= block[i].transform.z + 2 * block_size;
+
+					if (!isLandingOnTop)
+					{
+						robot[0].dir_z *= -1;
+					}
+				}
+			}
+			RobotMove(2);
+
+			// 장애물과 x축 이동 검사
+			RobotMove(3);
+			for (size_t i = 0; i < block.size(); i++)
+			{
+				if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
+				{
+					float robotBottomY = robot[5].vertex[0].y;
+					for (const auto& v : robot[5].vertex) {
+						robotBottomY = std::min(robotBottomY, v.y);
+					}
+					robotBottomY += robot[5].transform.y;
+					bool isLandingOnTop =
+						// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
+						robotBottomY <= block_size + 0.02f && robotBottomY >= block_size - 0.02f &&
+						robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
+						robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
+						robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
+						robot[5].transform.z <= block[i].transform.z + 2 * block_size;
+					if (!isLandingOnTop)
+					{
+						robot[0].dir_z *= +1;
+					}
+				}
+			}
+			RobotMove(4);
+		}
+
+
+		// 이동 구현
+		RobotMove(1);
+		RobotMove(3);
 	}
 
-	//이동 구현
-	if (robot[0].is_move)
-	{
-		RobotMove();
-	}
-	//점프 구현
-	if (robot[0].is_jump)
-	{
-		if (robot[5].transform.y + robot[5].vertex[0].y + robot[0].speed - gravity * robot[0].flight_time > 0.0f)
-		{
-			for (int i = 0; i < robot.size(); i++)
-			{
-				robot[i].transform.y += 0.05f * 3 / 4;
-				robot[i].transform.y -= gravity * robot[0].flight_time;
-			}
-		}
-		else
-		{
-			robot[0].is_jump = false;
-			robot[0].flight_time = 0;
-		}
-		robot[0].flight_time++;
-	}
-	//이동 애니메이션 구현 && 캐릭터 회전
+	//이동 애니메이션 구현 
 	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f)
 	{
 		if (robot[4].rotation.x > 50)
@@ -313,17 +355,64 @@ void Timer(int value) {
 		{
 			r = 1.0f;
 		}
-		robot[2].rotation.x -= 4 * (robot[0].speed / 0.05f) * r;
-		robot[3].rotation.x += 4 * (robot[0].speed / 0.05f) * r;
-		robot[4].rotation.x += 4 * (robot[0].speed / 0.05f) * r;
-		robot[5].rotation.x -= 4 * (robot[0].speed / 0.05f) * r;
-		//캐릭터 회전
-		float angle = (180.0f / 3.1415926535) * atan2(robot[0].dir_x, robot[0].dir_z);
-		for (size_t i = 0; i < rcnt; i++)
+	}
+	else
+	{
+		if (robot[4].rotation.x > -1.0 && robot[4].rotation.x < 1.0)
 		{
-			robot[i].rotation.y = angle;
+			r = 0.0f;
+		}
+		else
+		{
+			if (robot[4].rotation.x > 50)
+			{
+				r = -1.0f;
+			}
+			else if (robot[4].rotation.x < -50)
+			{
+				r = 1.0f;
+			}
 		}
 	}
+	if (r != 0.0f)
+	{
+		robot[2].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
+		robot[3].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
+		robot[4].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
+		robot[5].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
+	}
+
+	//캐릭터 회전
+	float angle = (180.0f / PI) * atan2(robot[0].dir_x, robot[0].dir_z);
+	for (size_t i = 0; i < rcnt; i++)
+	{
+		robot[i].rotation.y = angle;
+	}
+
+	//점프 구현
+	if (robot[0].is_jump)
+	{
+		std::cout << "점프\n";
+		if (robot[0].flight_time < 50)
+		{
+			robot[0].flight_time++;
+		}
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y += robot[0].speed;
+		}
+	}
+
+
+	//중력 구현
+	Apply_Gravity(1);
+	if (is_land())
+	{	
+		robot[0].is_jump = false;
+		robot[0].flight_time = 0;
+	}
+
+
 	//문 열림 애니메이션
 	if (mode_open)
 	{
@@ -344,7 +433,6 @@ void Timer(int value) {
 		camera.x = cx * cos(glm::radians(2.0f)) - cz * sin(glm::radians(2.0f));
 		camera.z = cx * sin(glm::radians(2.0f)) + cz * cos(glm::radians(2.0f));
 	}
-
 	glutTimerFunc(50, Timer, 0);
 }
 void Mouse(int button, int state, int x, int y) {
@@ -367,15 +455,31 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
 	case 'w':
+		if (r == 0.0f)
+		{
+			r = 1.0f;
+		}
 		robot[0].dir_z = -1.0f;
 		break;
 	case 's':
+		if (r == 0.0f)
+		{
+			r = 1.0f;
+		}
 		robot[0].dir_z = 1.0f;
 		break;
 	case 'a':
+		if (r == 0.0f)
+		{
+			r = -1.0f;
+		}
 		robot[0].dir_x = -1.0f;
 		break;
 	case 'd':
+		if (r == 0.0f)
+		{
+			r = -1.0f;
+		}
 		robot[0].dir_x = 1.0f;
 		break;
 	case '+':
@@ -436,6 +540,7 @@ void mainLoop() {
 
 	glutPostRedisplay(); // 다시 그리기 요청
 }
+
 bool is_inMap() {
 	if (robot[5].transform.x > 2.0f || robot[5].transform.x < -2.0f || robot[5].transform.z < -2.0f || robot[5].transform.z > 2.0f)
 	{
@@ -464,14 +569,99 @@ bool is_crash(Object& objA, Object& objB) {
 	// 모든 축에서 겹치면 충돌 발생
 	return xOverlap && yOverlap && zOverlap;
 }
-void RobotMove() {
-	for (int i = 0; i < rcnt; i++)
+bool is_land() {
+	// 로봇의 하단부 값 구하기
+	float robotBottomY = robot[5].vertex[0].y;
+	for (const auto& v : robot[5].vertex) {
+		robotBottomY = std::min(robotBottomY, v.y);
+	}
+	robotBottomY += robot[5].transform.y;
+	// 블럭 위인지 판정
+	for (int i = 0; i < block.size(); i++)
 	{
-		robot[i].transform.x += robot[0].speed * robot[0].dir_x;
-		robot[i].transform.z += robot[0].speed * robot[0].dir_z;
+		if (robotBottomY >= block_size - 0.001f && robotBottomY <= block_size + 0.001f &&
+			robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
+			robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
+			robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
+			robot[5].transform.z <= block[i].transform.z + 2 * block_size)
+		{
+			float gap = robotBottomY - block_size;
+			if (gap < 0)
+			{
+				gap *= -1;
+			}
+			std::cout << "블럭" << gap << std::endl;
+			for (int j = 0; j < rcnt; j++)
+			{
+				robot[j].transform.y -= gap;
+			}
+			return true;
+		}
+	}
+	//땅 위인지 검사 (이미 여기서 부터는 블럭 위는 아님)
+	if (robotBottomY > 0.0f && robotBottomY < 0.001f)
+	{
+		float gap = robotBottomY;
+		for (int j = 0; j < rcnt; j++)
+		{
+			robot[j].transform.y -= gap;
+		}
+		return true;
+	}
+	std::cout << "검사 공중\n";
+	return false;
+}
+void RobotMove(int dir) {
+	switch (dir)
+	{
+	case 1:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x += robot[0].dir_z * robot[0].speed * camera.forward.x;
+			robot[i].transform.z += robot[0].dir_z * robot[0].speed * camera.forward.z;
+		}
+		break;
+	case 2:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x -= robot[0].dir_z * robot[0].speed * camera.forward.x;
+			robot[i].transform.z -= robot[0].dir_z * robot[0].speed * camera.forward.z;
+		}
+		break;
+	case 3:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x += robot[0].dir_x * robot[0].speed * camera.right.x;
+			robot[i].transform.z += robot[0].dir_x * robot[0].speed * camera.right.z;
+		}
+		break;
+	case 4:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x -= robot[0].dir_x * robot[0].speed * camera.right.x;
+			robot[i].transform.z -= robot[0].dir_x * robot[0].speed * camera.right.z;
+		}
+		break;
+	default:
+		break;
 	}
 }
-
+void Apply_Gravity(int dir) {
+	if (dir == 1)
+	{
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y -= gravity * robot[0].flight_time;
+		}
+	}
+	else if (dir == -1)
+	{
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y += gravity * robot[0].flight_time;
+		}
+	}
+}
 void init_figure() {
 	cube.clear();
 	robot.clear();
@@ -533,7 +723,7 @@ void init_figure() {
 		z = 2 * (rand() % 2) - 1;
 		c.transform = {
 			x * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size),
-			block_size,
+			0,
 			z * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size)
 		};
 
@@ -553,8 +743,11 @@ void init_figure() {
 }
 void init_camera() {
 	//3인칭 카메라
-	camera.x = 0.0f, camera.y = 0.3f, camera.z = 2.0f;
+	camera.x = 0.0f, camera.y = 0.3f, camera.z = 3.0f;
 	camera.at_x = 0.0f, camera.at_y = 0.5f, camera.at_z = 0.0f;
+	camera.forward = glm::vec3{ 0.0f,0.0f,1.0f };
+	camera.up = glm::vec3{ 0.0f,1.0f,0.0f };
+	camera.right = glm::vec3{ 1.0f,0.0f,0.0f };
 }
 
 void Update_camera(float angle_xz, float angle_y) {
@@ -654,15 +847,15 @@ void Make_Block(Object& obj, float size) {
 	obj.indexlist.clear();
 
 	// 정점 추가
-	obj.vertex.emplace_back(glm::vec3{ -size, size, -size });
-	obj.vertex.emplace_back(glm::vec3{ -size, size, size });
-	obj.vertex.emplace_back(glm::vec3{ size, size, size });
-	obj.vertex.emplace_back(glm::vec3{ size, size, -size });
+	obj.vertex.emplace_back(glm::vec3{ -size * 2, size, -size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ -size * 2, size, size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ size * 2, size, size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ size * 2, size, -size * 2 });
 
-	obj.vertex.emplace_back(glm::vec3{ -size, -size, -size });
-	obj.vertex.emplace_back(glm::vec3{ -size, -size, size });
-	obj.vertex.emplace_back(glm::vec3{ size, -size, size });
-	obj.vertex.emplace_back(glm::vec3{ size, -size, -size });
+	obj.vertex.emplace_back(glm::vec3{ -size * 2, 0, -size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ -size * 2, 0, size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ size * 2, 0, size * 2 });
+	obj.vertex.emplace_back(glm::vec3{ size * 2, 0, -size * 2 });
 
 	// 색상 추가
 	int gray = rand() % 11;

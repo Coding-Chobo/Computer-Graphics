@@ -281,7 +281,6 @@ void Timer(int value) {
 	bool canmove_x = true;
 	bool canmove_z = true;
 	bool canmove_y = false;
-
 	bool is_contect = false;
 	//맵 이탈 방지
 	RobotMove(1);
@@ -348,11 +347,10 @@ void Timer(int value) {
 				robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
 				robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
 				robot[5].transform.z <= block[i].transform.z + 2 * block_size;
-
 			if (!isLandingOnTop)
 			{
 				is_contect = true;
-				canmove_z = false;
+				canmove_x = false;
 			}
 		}
 	}
@@ -421,7 +419,7 @@ void Timer(int value) {
 	}
 	else
 	{
-		robot[0].is_jump = false;
+		//robot[0].is_jump = false;
 	}
 
 	//점프 구현
@@ -434,7 +432,7 @@ void Timer(int value) {
 	}
 
 	//중력 구현
-	if (!is_land())
+	if (robot[0].flight_time != 0)
 	{
 		Apply_Gravity(1);
 
@@ -505,7 +503,6 @@ void Mouse(int button, int state, int x, int y) {
 
 	glutPostRedisplay(); // 다시 그리기 요청
 }
-// 마우스 이동 콜백 함수
 void passiveMotion(int x, int y) {
 	int deltaX = ((x - CenterScreen_x) / CenterScreen_x) * 90;
 	int deltaY = ((CenterScreen_y - y) / CenterScreen_y) * 90;
@@ -542,7 +539,6 @@ void Motion(int x, int y) {
 	glutWarpPointer(CenterScreen_x, CenterScreen_y);
 	glutPostRedisplay(); // 다시 그리기 요청
 }
-
 void SpecialKeyboard(int key, int x, int y)
 {
 	switch (key)
@@ -936,7 +932,6 @@ void Make_cube_back(Object& obj, float size) {
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
-
 void Make_Block(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.color.clear();
