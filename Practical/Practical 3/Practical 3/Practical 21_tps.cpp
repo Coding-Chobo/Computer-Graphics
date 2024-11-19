@@ -278,123 +278,104 @@ GLvoid UpdateVBO(Coordinate object) {
 }
 
 void Timer(int value) {
+	bool canmove_x = true;
+	bool canmove_z = true;
+	bool canmove_y = false;
 
-	// 장애물과 검사
+	bool is_contect = false;
+	RobotMove(1);
+	if (!is_inMap())
+	{
+		is_contect = true;
+		canmove_z = false;
+	}
+	RobotMove(2);
+
+	RobotMove(3);
+	if (!is_inMap())
+	{
+		is_contect = true;
+		canmove_x = false;
+	}
+	RobotMove(4);
+
+	RobotMove(1);
+	// 장애물과 z축 이동 검사
 	for (size_t i = 0; i < block.size(); i++)
 	{
 		if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
 		{
-			float robotBottomY = robot[5].transform.y + robot[5].vertex[0].y;
-
+			float robotBottomY = robot[5].vertex[0].y;
+			for (const auto& v : robot[5].vertex) {
+				robotBottomY = std::min(robotBottomY, v.y);
+			}
+			robotBottomY += robot[5].transform.y;
 			bool isLandingOnTop =
 				// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
-				robotBottomY >= block_size - 0.01f &&
+				robotBottomY <= block_size + 0.02f && robotBottomY >= block_size - 0.02f &&
 				robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
 				robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
 				robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
 				robot[5].transform.z <= block[i].transform.z + 2 * block_size;
 
-			if (robot[0].is_jump && isLandingOnTop)
+			if (!isLandingOnTop)
 			{
-				// 착지 처리
-				robot[0].is_jump = false;
-				robot[0].flight_time = 0;
-
-				// 착지 위치 조정
-				float gap = robotBottomY - block_size + 0.01f;
-				for (int i = 0; i < rcnt; i++)
-				{
-					robot[i].transform.y -= gap;
-				}
-			}
-			else if (!isLandingOnTop)
-			{
-				robot[0].dir_z = 0.0f;
+				is_contect = true;
+				canmove_z = false;
 			}
 		}
 	}
-	//이동 구현
-	for (size_t i = 0; i < rcnt; i++)
-	{
-		robot[i].transform.x += robot[0].dir_z * robot[0].speed * camera.forward.x;
-		robot[i].transform.z += robot[0].dir_z * robot[0].speed * camera.forward.z;
-	}
+	RobotMove(2);
+	// 이동 구현
 
-	// 장애물과 검사
+	RobotMove(3);
+	// 장애물과 x축 이동 검사
 	for (size_t i = 0; i < block.size(); i++)
 	{
 		if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
 		{
-			float robotBottomY = robot[5].transform.y + robot[5].vertex[0].y;
-
+			float robotBottomY = robot[5].vertex[0].y;
+			for (const auto& v : robot[5].vertex) {
+				robotBottomY = std::min(robotBottomY, v.y);
+			}
+			robotBottomY += robot[5].transform.y;
 			bool isLandingOnTop =
 				// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
-				robotBottomY >= block_size - 0.01f &&
+				robotBottomY <= block_size + 0.02f && robotBottomY >= block_size - 0.02f &&
 				robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
 				robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
 				robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
 				robot[5].transform.z <= block[i].transform.z + 2 * block_size;
 
-			if (robot[0].is_jump && isLandingOnTop)
+			if (!isLandingOnTop)
 			{
-				// 착지 처리
-				robot[0].is_jump = false;
-				robot[0].flight_time = 0;
-
-				// 착지 위치 조정
-				float gap = robotBottomY - block_size + 0.01f;
-				for (int i = 0; i < rcnt; i++)
-				{
-					robot[i].transform.y -= gap;
-				}
-			}
-			else if (!isLandingOnTop)
-			{
-				robot[0].dir_x = 0.0f;
+				is_contect = true;
+				canmove_z = false;
 			}
 		}
 	}
-	for (size_t i = 0; i < rcnt; i++)
+	RobotMove(4);
+
+	float basicspeed{};
+	if (is_contect)
 	{
-		robot[i].transform.x += robot[0].dir_x * robot[0].speed * camera.right.x;
-		robot[i].transform.z += robot[0].dir_x * robot[0].speed * camera.right.z;
+		basicspeed = robot[0].speed;
+		robot[0].speed = 0.01f;
 	}
-
-	//중력 구현
-	if (robot[0].flight_time != 0)
-	{
-
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.y -= gravity * robot[0].flight_time;
-		}
-		if (is_crash(robot[5], cube[4])) {
-			float y_gap = 0.0f - robot[5].transform.y;
-			if (y_gap < 0.0f)
-			{
-				y_gap *= -1;
-			}
-			for (int i = 0; i < rcnt; i++)
-			{
-				robot[i].transform.y += y_gap;
-			}
-			robot[0].is_jump = false;
-			robot[0].flight_time = 0;
-		}
+	// 이동 구현
+	if (canmove_z) {
+		RobotMove(1);
 	}
-
-	//점프 구현
-	if (robot[0].is_jump)
+	if (canmove_x) {
+		RobotMove(3);
+	}
+	if (is_contect)
 	{
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.y += 0.05f;
-		}
-		robot[0].flight_time++;
+		robot[0].speed = basicspeed;
 	}
 
 	//이동 애니메이션 구현 
-	if (robot[0].is_move)
+	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f)
 	{
 		if (robot[4].rotation.x > 50)
 		{
@@ -423,16 +404,92 @@ void Timer(int value) {
 			}
 		}
 	}
-	robot[2].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
-	robot[3].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
-	robot[4].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
-	robot[5].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
+	if (r != 0.0f)
+	{
+		robot[2].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
+		robot[3].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
+		robot[4].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
+		robot[5].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
+	}
+
+	//착지여부 검사
+
+	//공중시간 측정
+	if (!is_land())
+	{
+		robot[0].flight_time++;
+	}
+
+	//점프 구현
+	if (robot[0].is_jump)
+	{
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y += 0.05f;
+		}
+	}
+
+	//중력 구현
+	if (!is_land())
+	{
+		Apply_Gravity(1);
+
+		//장애물 검사
+		for (size_t i = 0; i < block.size(); i++)
+		{
+			float robotBottomY = robot[5].vertex[0].y;
+			for (const auto& v : robot[5].vertex) {
+				robotBottomY = std::min(robotBottomY, v.y);
+			}
+			robotBottomY += robot[5].transform.y;
+			bool isLandingOnTop =
+				// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
+				robotBottomY <= block_size + 0.02f && robotBottomY >= block_size - 0.02f &&
+				robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
+				robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
+				robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
+				robot[5].transform.z <= block[i].transform.z + 2 * block_size;
+
+			if (isLandingOnTop)
+			{
+				// 착지 처리
+				robot[0].is_jump = false;
+				canmove_y = false;
+				// 착지 위치 조정
+				float gap = robotBottomY - block_size;
+				for (int j = 0; j < rcnt; j++)
+				{
+					robot[j].transform.y -= gap;
+				}
+			}
+		}
+
+		// 바닥과 충돌검사
+		if (is_crash(robot[5], cube[4])) {
+			canmove_y = false;
+		}
+
+		Apply_Gravity(-1);
+		// 이동여부 판별후 이동
+	}
+
+	if (canmove_y)
+	{
+		Apply_Gravity(1);
+	}
+	else
+	{
+		robot[0].is_jump = false;
+		robot[0].flight_time = 0;
+	}
+
+
 	//문 열림 애니메이션
 	if (mode_open)
 	{
 		for (size_t i = 0; i < 4; i++)
 		{
-			if (cube[0].vertex[0].x > -1.0f)
+			if (cube[0].vertex[0].x > -2.0f)
 			{
 				cube[0].vertex[i].x -= 0.05f;
 				cube[1].vertex[i].x += 0.05f;
@@ -498,36 +555,43 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
 	case 'w':
-		if (!robot[0].is_move)
-		{
-			r = 1.0f;
-		}
-		robot[0].is_move = true;
+
+			if (r == 0.0f)
+			{
+				r = 1.0f;
+			}
+
+		
 		robot[0].dir_z = 1.0f;
+
 		break;
 	case 's':
-		if (!robot[0].is_move)
-		{
-			r = 1.0f;
-		}
-		robot[0].is_move = true;
+
+			if (r == 0.0f)
+			{
+				r = 1.0f;
+			}
+
 		robot[0].dir_z = -1.0f;
 		break;
 	case 'a':
-		if (!robot[0].is_move)
-		{
-			r = 1.0f;
-		}
-		robot[0].is_move = true;
+
+			if (r == 0.0f)
+			{
+				r = -1.0f;
+			}
+
 		robot[0].dir_x = -1.0f;
+
 
 		break;
 	case 'd':
-		if (!robot[0].is_move)
-		{
-			r = 1.0f;
-		}
-		robot[0].is_move = true;
+
+			if (r == 0.0f)
+			{
+				r = -1.0f;
+			}
+
 		robot[0].dir_x = 1.0f;
 		break;
 	case '+':
@@ -563,7 +627,6 @@ GLvoid KeyUp(unsigned char key, int x, int y) {
 	case 'w':case 's':
 		if (robot[0].dir_x ==0)
 		{
-			robot[0].is_move = false;
 			if (robot[4].rotation.x <40 && robot[4].rotation.x > -40)
 			{
 				r *= -1;
@@ -574,7 +637,6 @@ GLvoid KeyUp(unsigned char key, int x, int y) {
 	case 'a':case 'd':
 		if (robot[0].dir_z == 0)
 		{
-			robot[0].is_move = false;
 			if (robot[4].rotation.x <40 && robot[4].rotation.x > -40)
 			{
 				r *= -1;
@@ -611,6 +673,99 @@ bool is_crash(Object& objA, Object& objB) {
 	// 모든 축에서 겹치면 충돌 발생
 	return xOverlap && yOverlap && zOverlap;
 }
+bool is_inMap() {
+	if (robot[5].transform.x > 2.0f || robot[5].transform.x < -2.0f || robot[5].transform.z < -2.0f || robot[5].transform.z > 2.0f)
+	{
+		return false;
+	}
+	return true;
+}
+bool is_land() {
+	bool is_Land{false};
+
+	float robotBottomY = robot[5].vertex[0].y;
+	for (const auto& v : robot[5].vertex) {
+		robotBottomY = std::min(robotBottomY, v.y);
+	}
+	robotBottomY += robot[5].transform.y;
+
+	std::cout << robotBottomY << std::endl;
+
+
+	for (size_t i = 0; i < block.size(); i++)
+	{
+		// 로봇의 하단이 장애물 상단에 가깝게 있을 때 (착지할 때 약간의 여유를 줌)
+		if (robotBottomY <= block_size + 0.005f && robotBottomY >= block_size - 0.005f &&
+			robot[5].transform.x >= block[i].transform.x - 2 * block_size &&
+			robot[5].transform.x <= block[i].transform.x + 2 * block_size &&
+			robot[5].transform.z >= block[i].transform.z - 2 * block_size &&
+			robot[5].transform.z <= block[i].transform.z + 2 * block_size) 
+		{
+			is_Land = true;
+		}
+	}
+	if (!is_Land)
+	{
+		if (robotBottomY <= 0.005f && robotBottomY >= -0.005f)
+		{
+			is_Land = true;
+		}
+	}
+	return is_Land;
+}
+
+void RobotMove(int dir) {
+	switch (dir)
+	{
+	case 1:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x += robot[0].dir_z * robot[0].speed * camera.forward.x;
+			robot[i].transform.z += robot[0].dir_z * robot[0].speed * camera.forward.z;
+		}
+		break;
+	case 2:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x -= robot[0].dir_z * robot[0].speed * camera.forward.x;
+			robot[i].transform.z -= robot[0].dir_z * robot[0].speed * camera.forward.z;
+		}
+		break;
+	case 3:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x += robot[0].dir_x * robot[0].speed * camera.right.x;
+			robot[i].transform.z += robot[0].dir_x * robot[0].speed * camera.right.z;
+		}
+		break;
+	case 4:
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.x -= robot[0].dir_x * robot[0].speed * camera.right.x;
+			robot[i].transform.z -= robot[0].dir_x * robot[0].speed * camera.right.z;
+		}
+		break;
+	default:
+		break;
+	}
+}
+void Apply_Gravity(int dir) {
+	if (dir == 1)
+	{
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y -= gravity * robot[0].flight_time;
+		}
+	}
+	else if (dir == -1)
+	{
+		for (int i = 0; i < rcnt; i++)
+		{
+			robot[i].transform.y += gravity * robot[0].flight_time;
+		}
+	}
+}
+
 
 void init_figure() {
 	cube.clear();
@@ -700,7 +855,6 @@ void init_camera(){
 	camera.up = glm::vec3{ 0.0f,1.0f,0.0f };
 	camera.right = glm::vec3{ 1.0f,0.0f,0.0f };
 } 
-
 void Update_camera(float angle_xz, float angle_y) {
 	float vx = camera.forward.x;
 	float vz = camera.forward.z;

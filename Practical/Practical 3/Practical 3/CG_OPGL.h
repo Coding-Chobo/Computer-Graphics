@@ -67,7 +67,7 @@ public:
     float sensitivity{};
     glm::vec3 direction{};
     bool is_jump{};
-    bool is_move{};
+    bool is_Land{};
     int flight_time{};
     float dir_x{};
     float dir_z{};
@@ -121,8 +121,11 @@ void Update_camera(float angle_xz, float angle_y);
 void checkFrameBuffer();
 GLvoid InitBuffer();
 
-void is_walkable();
+void RobotMove(int dir);
+void Apply_Gravity(int dir);
 bool is_crash(Object& objA, Object& objB);
+bool is_inMap();
+bool is_land();
 
 void AddColors(Object& fig, float r, float g, float b);
 void AddColors_Indexlist(Object& fig, float r, float g, float b);

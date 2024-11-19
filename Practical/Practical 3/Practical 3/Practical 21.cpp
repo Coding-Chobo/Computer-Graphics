@@ -259,30 +259,30 @@ GLvoid UpdateVBO(Coordinate object) {
 
 void Timer(int value) {
 	//이동 충돌검사
-	for (int i = 0; i < robot.size(); i++)
+	for (int i = 0; i < rcnt; i++)
 	{
-		if (robot[i].transform.x > 1.0f)
+		if (robot[i].transform.x > 2.0f)
 		{
-			robot[0].dir_x = -1.0f;
+			robot[0].is_move = false;
 		}
-		else if (robot[i].transform.x < -1.0f)
+		else if (robot[i].transform.x < -2.0f)
 		{
-			robot[0].dir_x = 1.0f;
+			robot[0].is_move = false;
 		}
-		if (robot[i].transform.z < -1.0f)
+		if (robot[i].transform.z < -2.0f)
 		{
-			robot[0].dir_z = 1.0f;
+			robot[0].is_move = false;
 		}
-		else if (robot[i].transform.z > 1.0f)
+		else if (robot[i].transform.z > 2.0f)
 		{
-			robot[0].dir_z = -1.0f;
+			robot[0].is_move = false;
 		}
 	}
+
 	//이동 구현
-	for (int i = 0; i < robot.size(); i++)
+	if (robot[0].is_move)
 	{
-		robot[i].transform.x += robot[0].speed * robot[0].dir_x;
-		robot[i].transform.z += robot[0].speed * robot[0].dir_z;
+		RobotMove();
 	}
 	//점프 구현
 	if (robot[0].is_jump)
@@ -305,7 +305,6 @@ void Timer(int value) {
 	//이동 애니메이션 구현 && 캐릭터 회전
 	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f)
 	{
-
 		if (robot[4].rotation.x > 50)
 		{
 			r = -1.0f;
@@ -315,13 +314,12 @@ void Timer(int value) {
 			r = 1.0f;
 		}
 		robot[2].rotation.x -= 4 * (robot[0].speed / 0.05f) * r;
-		robot[3].rotation.x += 8 * r;
-		robot[4].rotation.x += 8 * r;
-		robot[5].rotation.x -= 8 * r;
+		robot[3].rotation.x += 4 * (robot[0].speed / 0.05f) * r;
+		robot[4].rotation.x += 4 * (robot[0].speed / 0.05f) * r;
+		robot[5].rotation.x -= 4 * (robot[0].speed / 0.05f) * r;
 		//캐릭터 회전
-		size_t o = robot.size();
 		float angle = (180.0f / 3.1415926535) * atan2(robot[0].dir_x, robot[0].dir_z);
-		for (size_t i = 0; i < o; i++)
+		for (size_t i = 0; i < rcnt; i++)
 		{
 			robot[i].rotation.y = angle;
 		}
@@ -331,7 +329,7 @@ void Timer(int value) {
 	{
 		for (size_t i = 0; i < 4; i++)
 		{
-			if (cube[0].vertex[0].x > -1.0f)
+			if (cube[0].vertex[0].x > -2.0f)
 			{
 				cube[0].vertex[i].x -= 0.05f;
 				cube[1].vertex[i].x += 0.05f;
@@ -346,7 +344,6 @@ void Timer(int value) {
 		camera.x = cx * cos(glm::radians(2.0f)) - cz * sin(glm::radians(2.0f));
 		camera.z = cx * sin(glm::radians(2.0f)) + cz * cos(glm::radians(2.0f));
 	}
-
 
 	glutTimerFunc(50, Timer, 0);
 }
@@ -439,7 +436,13 @@ void mainLoop() {
 
 	glutPostRedisplay(); // 다시 그리기 요청
 }
-
+bool is_inMap() {
+	if (robot[5].transform.x > 2.0f || robot[5].transform.x < -2.0f || robot[5].transform.z < -2.0f || robot[5].transform.z > 2.0f)
+	{
+		return false;
+	}
+	return true;
+}
 bool is_crash(Object& objA, Object& objB) {
 	// AABB 업데이트
 	objA.UpdateBoundingBox();
@@ -460,6 +463,13 @@ bool is_crash(Object& objA, Object& objB) {
 
 	// 모든 축에서 겹치면 충돌 발생
 	return xOverlap && yOverlap && zOverlap;
+}
+void RobotMove() {
+	for (int i = 0; i < rcnt; i++)
+	{
+		robot[i].transform.x += robot[0].speed * robot[0].dir_x;
+		robot[i].transform.z += robot[0].speed * robot[0].dir_z;
+	}
 }
 
 void init_figure() {
