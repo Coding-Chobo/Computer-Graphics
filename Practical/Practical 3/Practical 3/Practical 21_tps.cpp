@@ -283,6 +283,7 @@ void Timer(int value) {
 	bool canmove_y = false;
 
 	bool is_contect = false;
+	//맵 이탈 방지
 	RobotMove(1);
 	if (!is_inMap())
 	{
@@ -299,6 +300,7 @@ void Timer(int value) {
 	}
 	RobotMove(4);
 
+	//장애물과 xz평면 검사
 	RobotMove(1);
 	// 장애물과 z축 이동 검사
 	for (size_t i = 0; i < block.size(); i++)
@@ -412,12 +414,14 @@ void Timer(int value) {
 		robot[5].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
 	}
 
-	//착지여부 검사
-
 	//공중시간 측정
 	if (!is_land())
 	{
 		robot[0].flight_time++;
+	}
+	else
+	{
+		robot[0].is_jump = false;
 	}
 
 	//점프 구현
@@ -463,12 +467,10 @@ void Timer(int value) {
 				}
 			}
 		}
-
 		// 바닥과 충돌검사
 		if (is_crash(robot[5], cube[4])) {
 			canmove_y = false;
 		}
-
 		Apply_Gravity(-1);
 		// 이동여부 판별후 이동
 	}
@@ -555,43 +557,31 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 	switch (key)
 	{
 	case 'w':
-
-			if (r == 0.0f)
-			{
-				r = 1.0f;
-			}
-
-		
+		if (r == 0.0f)
+		{
+			r = 1.0f;
+		}
 		robot[0].dir_z = 1.0f;
-
 		break;
 	case 's':
-
-			if (r == 0.0f)
-			{
-				r = 1.0f;
-			}
-
+		if (r == 0.0f)
+		{
+			r = 1.0f;
+		}
 		robot[0].dir_z = -1.0f;
 		break;
 	case 'a':
-
-			if (r == 0.0f)
-			{
-				r = -1.0f;
-			}
-
+		if (r == 0.0f)
+		{
+			r = -1.0f;
+		}
 		robot[0].dir_x = -1.0f;
-
-
 		break;
 	case 'd':
-
-			if (r == 0.0f)
-			{
-				r = -1.0f;
-			}
-
+		if (r == 0.0f)
+		{
+			r = -1.0f;
+		}
 		robot[0].dir_x = 1.0f;
 		break;
 	case '+':
@@ -702,11 +692,12 @@ bool is_land() {
 			robot[5].transform.z <= block[i].transform.z + 2 * block_size) 
 		{
 			is_Land = true;
+			break;
 		}
 	}
 	if (!is_Land)
 	{
-		if (robotBottomY <= 0.005f && robotBottomY >= -0.005f)
+		if (robotBottomY <= 0.05f && robotBottomY >= -0.05f)
 		{
 			is_Land = true;
 		}
