@@ -10,7 +10,7 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
-vector<Object> robot{}, cube{}, block{}, ground{}, cylinder{};
+vector<Object> robot{}, cube{}, block{}, ground{}, cylinder{},mini1,mini2,mini3;
 Coordinate Coordinate_system{};
 FreeCamera camera{};
 
@@ -25,7 +25,9 @@ bool camera_animation{ false };
 int count{};
 
 float r = 1.0f;
+int count_for_sec{};
 float leg_size[7]{};
+float mini_size[3][7]{};
 float block_size{ 0.5f };
 float cylinder_size = 0.5f;
 float ground_size = 0.5f;
@@ -97,6 +99,19 @@ GLvoid Render() {
 	{
 		robot[i].Draw_object();
 	}
+	for (int i = 0; i < robot.size(); i++)
+	{
+		mini1[i].Draw_object();
+	}
+	for (int i = 0; i < robot.size(); i++)
+	{
+		mini2[i].Draw_object();
+	}
+	for (int i = 0; i < robot.size(); i++)
+	{
+		mini3[i].Draw_object();
+	}
+
 	glutSwapBuffers();
 }
 
@@ -271,6 +286,37 @@ GLvoid UpdateVBO(Coordinate object) {
 }
 
 void Timer(int value) {
+	for (int i = 0; i < rcnt; i++)
+	{
+		robot[i].last_transform.insert(robot[i].last_transform.begin(), robot[i].transform);
+		robot[i].last_rotation.insert(robot[i].last_rotation.begin(), robot[i].rotation);
+		if (robot[i].last_transform.size() >= 4)
+		{
+			mini1[i].transform = robot[i].last_transform[3];
+			mini1[i].rotation = robot[i].last_rotation[3];
+			mini1[i].transform.y -= mini_size[2][i];
+		}
+		if (robot[i].last_transform.size() >= 8)
+		{
+			mini2[i].transform = robot[i].last_transform[7];
+			mini2[i].rotation = robot[i].last_rotation[7];
+			mini2[i].transform.y -= mini_size[1][i];
+		}
+		if (robot[i].last_transform.size() >= 12)
+		{
+			mini3[i].transform = robot[i].last_transform[11];
+			mini3[i].rotation = robot[i].last_rotation[11];
+			mini3[i].transform.y -= mini_size[0][i];
+		}
+		if (robot[i].last_transform.size() > 12)
+		{
+			robot[i].last_transform.pop_back();
+			robot[i].last_rotation.pop_back();
+		}
+	}
+
+
+
 	//이동 충돌검사
 	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f) {
 		bool turn_x{ false }, turn_z{ false };
@@ -756,17 +802,52 @@ void init_figure() {
 	read_obj_file("robot_face.obj", objfile);
 	robot.emplace_back(objfile);
 	rcnt = robot.size();
+	//-----------------------------색상입히기----------------------------
+	AddColors(robot[0], 0.8f, 0.0f, 0.0f);
+	AddColors(robot[1], 0.8f, 0.8f, 0.0f);
+
+	AddColors(robot[2], 0.8f, 0.8f, 0.8f);
+	AddColors(robot[3], 0.8f, 0.8f, 0.8f);
+
+	AddColors(robot[4], 0.2f, 0.2f, 0.2f);
+	AddColors(robot[5], 0.2f, 0.2f, 0.2f);
+	AddColors(robot[6], 0.0f, 0.0f, 0.0f);
+	//-----------------------------mini로봇 생성---------------------------
+	mini1 = robot;
+	mini2 = robot;
+	mini3 = robot;
+	for (int i = 0; i < rcnt; i++)
+	{
+		size_t vcnt = robot[i].vertex.size();
+		for (size_t j = 0; j < vcnt; j++)
+		{
+			mini1[i].vertex[j] *= 0.7f;
+			mini2[i].vertex[j] *= 0.5f;
+			mini3[i].vertex[j] *= 0.3f;
+		}
+	}
+	//-----------------------------로봇 월드변환 벡터 수정---------------------------
 	for (size_t i = 0; i < rcnt; i++)
 	{
-		robot[i].transform.y = robot[i].vertex[2].y - 0.02f;
+		robot[i].transform.y = robot[i].vertex[2].y;
+		mini1[i].transform.y = mini1[i].vertex[2].y;
+		mini2[i].transform.y = mini2[i].vertex[2].y;
+		mini3[i].transform.y = mini3[i].vertex[2].y;
 		size_t vcnt = robot[i].vertex.size();
 		for (size_t j = 0; j < vcnt; j++)
 		{
 			robot[i].vertex[j].y -= robot[i].transform.y;
+			mini1[i].vertex[j].y -= mini1[i].transform.y;
+			mini2[i].vertex[j].y -= mini2[i].transform.y;
+			mini3[i].vertex[j].y -= mini3[i].transform.y;
 		}
 		leg_size[i] = robot[i].transform.y;
+		mini_size[0][i] = mini1[i].transform.y;
+		mini_size[1][i] = mini2[i].transform.y;
+		mini_size[2][i] = mini3[i].transform.y;
 	}
 	robot[0].speed = 0.04f;
+
 	//-----------------------------땅 생성---------------------------
 	for (int i = 0; i < 4; i++)
 	{
@@ -806,16 +887,7 @@ void init_figure() {
 		c.transform = { (rand() % 4)  - 1.5f,0.0f,(rand() % 4) * 1.0f - 1.5f };
 		block.emplace_back(c);
 	}
-	//-----------------------------색상입히기----------------------------
-	AddColors(robot[0], 0.8f, 0.0f, 0.0f);
-	AddColors(robot[1], 0.8f, 0.8f, 0.0f);
 
-	AddColors(robot[2], 0.8f, 0.8f, 0.8f);
-	AddColors(robot[3], 0.8f, 0.8f, 0.8f);
-
-	AddColors(robot[4], 0.2f, 0.2f, 0.2f);
-	AddColors(robot[5], 0.2f, 0.2f, 0.2f);
-	AddColors(robot[6], 0.0f, 0.0f, 0.0f);
 	//-------------------------변환정보 입력-------------------------
 }
 void init_camera() {

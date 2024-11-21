@@ -61,6 +61,8 @@ public:
     XYZ transform{};
     XYZ scaling{};
     XYZ rotation{};
+    vector<XYZ> last_transform{};
+    vector<XYZ> last_rotation{};
     XYZ tps_position{};
     BoundingBox hitbox{};
     float speed{};
