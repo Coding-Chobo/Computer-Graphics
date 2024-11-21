@@ -24,7 +24,7 @@ unsigned int shape{ 0 };
 bool mode_animation[10]{ false };
 unsigned int camera_animation{ false };
 int count{};
-int viewID = 1;
+int viewID = 1;127
 float size = 0.2f;
 float dir_x = 0.0f;
 float dir_z = 0.0f;

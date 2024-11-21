@@ -110,22 +110,29 @@ void Make_cube_front_left(Object& obj, float size);
 void Make_cube_front_right(Object& obj, float size);
 
 void Make_Block(Object& obj, float size);
+void Make_Ball();
+void Make_Cylinder(Object& obj, float size);
+
 
 void Draw_Coordinate(Coordinate obj);
 
 //카메라
 void init_camera();
 void Update_camera(float angle_xz, float angle_y);
+void Update_camera(float angle_xy);
 
 //버퍼 관련
 void checkFrameBuffer();
 GLvoid InitBuffer();
 
 void RobotMove(int dir);
+void BallMove(int dir);
 void Apply_Gravity(int dir);
 bool is_crash(Object& objA, Object& objB);
 bool is_inMap();
-bool is_land();
+void on_land();
+void on_block();
+void Rotate_vertex(float angle);
 
 void AddColors(Object& fig, float r, float g, float b);
 void AddColors_Indexlist(Object& fig, float r, float g, float b);

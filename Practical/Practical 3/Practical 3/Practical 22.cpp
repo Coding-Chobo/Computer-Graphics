@@ -10,7 +10,7 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
-vector<Object> robot{}, cube{}, block{};
+vector<Object> box{}, cube{}, ball{};
 Coordinate Coordinate_system{};
 FreeCamera camera{};
 
@@ -19,17 +19,18 @@ GLuint vbo[2];
 GLuint EBO;
 
 //실습에 필요한 변수들
-int rcnt{};
+unsigned int shape{ 0 };
 bool mode_open{ false };
 bool camera_animation{ false };
-int count{};
-int cameraID{};
-float r = 1.0f;
+int bcnt{}, ccnt{};
 float leg_size[7]{};
-float block_size{ 0.1 };
+float speed{ 0.05 };
+float CenterScreen_x = WIDTH / 2;
+float CenterScreen_y = HEIGHT / 2;
+float r = 1.0f;
 float gravity = 0.005f;
-XYZ tps = { 0.0f, 0.15f,-0.1f };
-
+float block_size{ 0.07 };
+XYZ tps = { 0.0f, 0.15f,0.1f };
 //-----------------------------------------------------------------------
 void main(int argc, char** argv)
 {
@@ -45,12 +46,13 @@ void main(int argc, char** argv)
 	glewExperimental = GL_TRUE;
 	glewInit();
 	// 은면제거
-	//glEnable(GL_CULL_FACE);
-
+	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
+	glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 
 	InitBuffer();
 	CreateShaderProgram();
+	glutWarpPointer(CenterScreen_x, CenterScreen_y);
 	//도형 정보 초기화
 	init_figure();
 	init_camera();
@@ -58,7 +60,9 @@ void main(int argc, char** argv)
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
 	glutMotionFunc(Motion);
+	glutPassiveMotionFunc(passiveMotion);
 	glutKeyboardFunc(Keyboard);
+	glutKeyboardUpFunc(KeyUp);
 	glutSpecialFunc(SpecialKeyboard);
 	glutTimerFunc(50, Timer, 0);
 	glutDisplayFunc(Render);
@@ -75,15 +79,15 @@ GLvoid Render() {
 	{
 		cube[i].Draw_object();
 	}
-	//장애물 그리기
-	for (int i = 0; i < block.size(); i++)
+	//박스 그리기
+	for (int i = 0; i < ball.size(); i++)
 	{
-		block[i].Draw_object();
+		ball[i].Draw_object();
 	}
-	//로봇 그리기
-	for (int i = 0; i < robot.size(); i++)
+	//공 그리기
+	for (int i = 0; i < bcnt; i++)
 	{
-		robot[i].Draw_object();
+		box[i].Draw_object();
 	}
 	glutSwapBuffers();
 }
@@ -148,6 +152,7 @@ void Object::Make_Matrix() {
 		glm::vec3(camera.at_x, camera.at_y, camera.at_z), // 카메라가 바라보는 지점
 		glm::vec3(0.0f, 1.0f, 0.0f)  // 월드 업 벡터
 	);
+
 	// 투영 설정
 	projectionMatrix = glm::perspective(
 		glm::radians(90.0f), // 시야각
@@ -211,7 +216,22 @@ void Object::UpdateVBO() {
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
 	glEnableVertexAttribArray(1);
 }
-
+void FixedCamera::rotation_camera_vector_xz(float angle) {
+	float vx = camera.forward.x;
+	float vz = camera.forward.z;
+	camera.forward.x = vx * cos(glm::radians(angle)) - vz * sin(glm::radians(angle));
+	camera.forward.z = vx * sin(glm::radians(angle)) + vz * cos(glm::radians(angle));
+	camera.right.x = camera.forward.x * cos(glm::radians(90.0)) - camera.forward.z * sin(glm::radians(90.0));
+	camera.right.z = camera.forward.x * sin(glm::radians(90.0)) + camera.forward.z * cos(glm::radians(90.0));
+}
+void FreeCamera::rotation_camera_vector_xz(float angle) {
+	float vx = camera.forward.x;
+	float vz = camera.forward.z;
+	camera.forward.x = vx * cos(glm::radians(angle)) - vz * sin(glm::radians(angle));
+	camera.forward.z = vx * sin(glm::radians(angle)) + vz * cos(glm::radians(angle));
+	camera.right.x = camera.forward.x * cos(glm::radians(90.0)) - camera.forward.z * sin(glm::radians(90.0));
+	camera.right.z = camera.forward.x * sin(glm::radians(90.0)) + camera.forward.z * cos(glm::radians(90.0));
+}
 GLvoid UpdateVBO(Object object) {
 	// VAO 바인드
 	glBindVertexArray(vao);
@@ -257,158 +277,96 @@ GLvoid UpdateVBO(Coordinate object) {
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
 	glEnableVertexAttribArray(1);
 }
-
+void BallMove(int dir) {
+	switch (dir)
+	{
+	case  1:
+		for (size_t i = 0; i < ball.size(); i++)
+		{
+			ball[i].transform.y += ball[i].direction.y * speed;
+		}
+		break;
+	case  2:
+		for (size_t i = 0; i < ball.size(); i++)
+		{
+			ball[i].transform.y -= ball[i].direction.y * speed;
+		}
+		break;
+	case  3:
+		for (size_t i = 0; i < ball.size(); i++)
+		{
+			ball[i].transform.x += ball[i].direction.x * speed;
+		}
+		break;
+	case  4:
+		for (size_t i = 0; i < ball.size(); i++)
+		{
+			ball[i].transform.x -= ball[i].direction.x * speed;
+		}
+		break;
+	default:
+		break;
+	}
+}
 void Timer(int value) {
-	//이동 충돌검사
-	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f) {
-		bool turn_x{ false }, turn_z{ false };
-		RobotMove(1);
-		if (!is_inMap())
-		{
-			turn_z = true;
-		}
-		RobotMove(2);
-		RobotMove(3);
-		if (!is_inMap())
-		{
-			turn_x = true;
-		}
-		RobotMove(4);
-		if (turn_x)
-		{
-			robot[0].dir_x *= -1;
-		}
-		if (turn_z)
-		{
-			robot[0].dir_z *= -1;
-		}
-		//장애물과 xz평면 검사
-		if (!robot[0].is_jump)
-		{
-			// 장애물과 z축 이동 검사
-			RobotMove(1);
-			for (size_t i = 0; i < block.size(); i++)
-			{
-				if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
-				{
-					float robotBottomY = robot[5].vertex[0].y;
-					for (const auto& v : robot[5].vertex) {
-						robotBottomY = std::min(robotBottomY, v.y);
-					}
-					robotBottomY += robot[5].transform.y;
-					
-					if (robotBottomY < block_size)
-					{
-						robot[0].dir_z *= -1;
-					}
-				}
-			}
-			RobotMove(2);
-
-			// 장애물과 x축 이동 검사
-			RobotMove(3);
-			for (size_t i = 0; i < block.size(); i++)
-			{
-				if (is_crash(robot[5], block[i])) // 충돌이 발생했는지 확인
-				{
-					float robotBottomY = robot[5].vertex[0].y;
-					for (const auto& v : robot[5].vertex) {
-						robotBottomY = std::min(robotBottomY, v.y);
-					}
-					robotBottomY += robot[5].transform.y;
-
-					if (robotBottomY < block_size)
-					{
-						robot[0].dir_x *= -1;
-					}
-				}
-			}
-			RobotMove(4);
-		}
-		// 이동 구현
-		RobotMove(1);
-		RobotMove(3);
-	}
-
-	//캐릭터 회전
-	float angle = (180.0f / PI) * atan2(robot[0].dir_x, robot[0].dir_z);
-	for (size_t i = 0; i < rcnt; i++)
+	if (camera_animation == 1)
 	{
-		robot[i].rotation.y = angle;
+		float cx = camera.x;
+		float cz = camera.z;
+		camera.x = cx * cos(glm::radians(2.0f)) - cz * sin(glm::radians(2.0f));
+		camera.z = cx * sin(glm::radians(2.0f)) + cz * cos(glm::radians(2.0f));
 	}
-	//이동 애니메이션 구현 
-	if (robot[0].dir_x != 0.0f || robot[0].dir_z != 0.0f)
+	BallMove(1);
+	for (size_t i = 0; i < ball.size(); i++)
 	{
-		if (robot[4].rotation.x > 50)
+		for (int j = 0; j < ccnt; j++)
 		{
-			r = -1.0f;
-		}
-		else if (robot[4].rotation.x < -50)
-		{
-			r = 1.0f;
-		}
-	}
-	else
-	{
-		if (robot[4].rotation.x > -1.0 && robot[4].rotation.x < 1.0)
-		{
-			r = 0.0f;
-		}
-		else
-		{
-			if (robot[4].rotation.x > 50)
+			if (is_crash(ball[i], cube[j]))
 			{
-				r = -1.0f;
-			}
-			else if (robot[4].rotation.x < -50)
-			{
-				r = 1.0f;
+				ball[i].direction.y *= -1;
 			}
 		}
 	}
-	if (r != 0.0f)
+	BallMove(3);
+	for (size_t i = 0; i < ball.size(); i++)
 	{
-		robot[2].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
-		robot[3].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
-		robot[4].rotation.x += 4 * (robot[0].speed / 0.02f) * r;
-		robot[5].rotation.x -= 4 * (robot[0].speed / 0.02f) * r;
-	}
-
-	//점프 구현
-	if (robot[0].is_jump)
-	{
-		if (robot[0].flight_time < 50)
+		for (int j = 0; j < ccnt; j++)
 		{
-			robot[0].flight_time++;
-		}
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.y += robot[0].speed;
-		}
-	}
-
-	on_land();
-	on_block();
-
-	//문 열림 애니메이션
-	if (mode_open)
-	{
-		for (size_t i = 0; i < 4; i++)
-		{
-			if (cube[0].vertex[0].x > -2.0f)
+			if (is_crash(ball[i], cube[j]))
 			{
-				cube[0].vertex[i].x -= 0.05f;
-				cube[1].vertex[i].x += 0.05f;
+				ball[i].direction.x *= -1;
 			}
 		}
 	}
+
+
 	glutTimerFunc(50, Timer, 0);
 }
 void Mouse(int button, int state, int x, int y) {
 
+	glutPostRedisplay(); // 다시 그리기 요청
+}
+void passiveMotion(int x, int y) {
+	int deltaX = ((x - CenterScreen_x) / CenterScreen_x) * 90;
+	
+	// 카메라 각도를 업데이트
+	//캐릭터 회전
+	//float angle = (180.0f / PI) * atan2(camera.forward.y, camera.forward.x);
+	Rotate_vertex(deltaX);
+	// 마우스를 다시 중앙으로 설정
+	glutWarpPointer(CenterScreen_x, CenterScreen_y);
+	glutPostRedisplay(); // 다시 그리기 요청
 }
 void Motion(int x, int y) {
+	int deltaX = ((x - CenterScreen_x) / CenterScreen_x) * 90;
 
+	// 카메라 각도를 업데이트
+	//캐릭터 회전
+	//float angle = (180.0f / PI) * atan2(camera.forward.y, camera.forward.x);
+	Rotate_vertex(deltaX);
+	// 마우스를 다시 중앙으로 설정
+	glutWarpPointer(CenterScreen_x, CenterScreen_y);
+	glutPostRedisplay(); // 다시 그리기 요청
 }
 void SpecialKeyboard(int key, int x, int y)
 {
@@ -423,100 +381,37 @@ GLvoid Keyboard(unsigned char key, int x, int y) {
 
 	switch (key)
 	{
-	case 'w':
-		if (r == 0.0f)
-		{
-			r = 1.0f;
-		}
-		robot[0].dir_z = -1.0f;
-		break;
-	case 's':
-		if (r == 0.0f)
-		{
-			r = 1.0f;
-		}
-		robot[0].dir_z = 1.0f;
-		break;
-	case 'a':
-		if (r == 0.0f)
-		{
-			r = -1.0f;
-		}
-		robot[0].dir_x = -1.0f;
-		break;
-	case 'd':
-		if (r == 0.0f)
-		{
-			r = -1.0f;
-		}
-		robot[0].dir_x = 1.0f;
-		break;
-	case '+':
-		if (robot[0].speed < 0.1f)
-		{
-			robot[0].speed += 0.01f;
-		}
-		break;
-	case '-':
-		if (robot[0].speed > 0.02f)
-		{
-			robot[0].speed -= 0.01f;
-		}
-		break;
-	case 'z':
-		camera.z -= 0.1f;
-		break;
-	case 'Z':
-		camera.z += 0.1f;
-		break;
-	case 'x':
-		camera.x -= 0.1f;
-		break;
-	case 'X':
-		camera.x += 0.1f;
-		break;
 	case 'y':case 'Y':
 		camera_animation = !camera_animation;
 		break;
-	case 'v':
-		camera.y -= 0.1f;
-		break;
-	case 'V':
-		camera.y += 0.1f;
-		break;
-	case 'o':case 'O':
-		mode_open = true;
-		break;
-	case 32: // 점프
-		robot[0].is_jump = true;
-		break;
 	case '4': // 초기화
 		init_figure();
-		mode_open = false;
-		camera_animation = 0;
+		camera_animation = false;
 		break;
-	case 'c': case 'C':
-		init_figure();
-		break;
-	case 'q':
+	case 'q':case'Q':
 		exit(0);
 		break;
+	case 'b':case'B':
+		if (ball.size() < 5)
+		{
+			std::cout << "Make Ball\n";
+			Make_Ball();
+		}
+		break;
 	}
 }
-
+GLvoid KeyUp(unsigned char key, int x, int y) {
+	switch (key)
+	{
+	
+	default:
+		break;
+	}
+}
 void mainLoop() {
 
-
-	glutPostRedisplay(); // 다시 그리기 요청
 }
 
-bool is_inMap() {
-	if (robot[5].transform.x > 2.0f || robot[5].transform.x < -2.0f || robot[5].transform.z < -2.0f || robot[5].transform.z > 2.0f)
-	{
-		return false;
-	}
-	return true;
-}
 bool is_crash(Object& objA, Object& objB) {
 	// AABB 업데이트
 	objA.UpdateBoundingBox();
@@ -538,250 +433,184 @@ bool is_crash(Object& objA, Object& objB) {
 	// 모든 축에서 겹치면 충돌 발생
 	return xOverlap && yOverlap && zOverlap;
 }
-void on_land() {
-	// 로봇의 하단부 값 구하기
-	float robotBottomY = robot[5].vertex[0].y;
-	for (const auto& v : robot[5].vertex) {
-		robotBottomY = std::min(robotBottomY, v.y);
-	}
-	robotBottomY += robot[5].transform.y; // 로봇 하단부의 월드 좌표
-	Apply_Gravity(1);
-	if (is_crash(cube[4],robot[5])&& robotBottomY < block_size) {
-		for (int j = 0; j < rcnt; j++)
+
+void Rotate_vertex(float angle_xy) {
+	for (size_t i = 0; i < bcnt; i++)
+	{
+		int bvcnt = box[i].vertex.size();
+		for (int j = 0; j < bvcnt; j++)
 		{
-			robot[j].transform.y = leg_size[j];
+			float vx = box[i].vertex[j].x;
+			float vy = box[i].vertex[j].y;
+			box[i].vertex[j].x = vx * cos(glm::radians(angle_xy)) - vy * sin(glm::radians(angle_xy));
+			box[i].vertex[j].y = vx * sin(glm::radians(angle_xy)) + vy * cos(glm::radians(angle_xy));
 		}
-		robot[0].is_jump = false;
-		robot[0].flight_time = 0;
 	}
+	for (size_t i = 0; i < ccnt; i++)
+	{
+		int cvcnt = cube[i].vertex.size();
+		for (int j = 0; j < cvcnt; j++)
+		{
+			float vx = cube[i].vertex[j].x;
+			float vy = cube[i].vertex[j].y;
+			cube[i].vertex[j].x = vx * cos(glm::radians(angle_xy)) - vy * sin(glm::radians(angle_xy));
+			cube[i].vertex[j].y = vx * sin(glm::radians(angle_xy)) + vy * cos(glm::radians(angle_xy));
+		}
+	}
+}
+
+void on_land() {
+	
 }
 void on_block() {
-	// 로봇의 하단부 값 구하기
-	float robotBottomY = robot[5].vertex[0].y;
-	for (const auto& v : robot[5].vertex) {
-		robotBottomY = std::min(robotBottomY, v.y);
-	}
-	robotBottomY += robot[5].transform.y; // 로봇 하단부의 월드 좌표
 
-	// 블럭 위에 있는지 확인
-	for (int i = 0; i < block.size(); i++)
-	{
-		if (is_crash(block[i],robot[5])) { 
-			for (int j = 0; j < rcnt; j++)
-			{
-				robot[j].transform.y = leg_size[j] + block_size;
-			}
-			robot[0].is_jump = false;
-			robot[0].flight_time = 0;
-			return;
-		}
-	}
 }
 void RobotMove(int dir) {
-	switch (dir)
-	{
-	case 1:
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.x += robot[0].dir_z * robot[0].speed * camera.forward.x;
-			robot[i].transform.z += robot[0].dir_z * robot[0].speed * camera.forward.z;
-		}
-		break;
-	case 2:
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.x -= robot[0].dir_z * robot[0].speed * camera.forward.x;
-			robot[i].transform.z -= robot[0].dir_z * robot[0].speed * camera.forward.z;
-		}
-		break;
-	case 3:
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.x += robot[0].dir_x * robot[0].speed * camera.right.x;
-			robot[i].transform.z += robot[0].dir_x * robot[0].speed * camera.right.z;
-		}
-		break;
-	case 4:
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.x -= robot[0].dir_x * robot[0].speed * camera.right.x;
-			robot[i].transform.z -= robot[0].dir_x * robot[0].speed * camera.right.z;
-		}
-		break;
-	default:
-		break;
-	}
+
 }
-void Apply_Gravity(int dir) {
-	if (dir == 1)
-	{
-		if (robot[5].transform.y > leg_size[5] + block_size * 2 / 3)
-		{
-			for (int i = 0; i < rcnt; i++)
-			{
-				robot[i].transform.y -= gravity * (robot[0].flight_time + 2);
-			}
-		}
-		else
-		{
-			for (int i = 0; i < rcnt; i++)
-			{
-			robot[i].transform.y -= gravity * (robot[0].flight_time + 1);
-			}
-		}
-	}
-	else if (dir == -1)
-	{
-		for (int i = 0; i < rcnt; i++)
-		{
-			robot[i].transform.y += gravity * robot[0].flight_time;
-		}
-	}
-}
+//void Apply_Gravity(int dir) {
+//	if (dir == 1)
+//	{
+//		for (int i = 0; i < bcnt; i++)
+//		{
+//			box[i].transform.y -= gravity * (box[0].flight_time + 5);
+//		}
+//	}
+//	else if (dir == -1)
+//	{
+//		for (int i = 0; i < bcnt; i++)
+//		{
+//			box[i].transform.y += gravity * box[0].flight_time;
+//		}
+//	}
+//}
+
 void init_figure() {
 	cube.clear();
-	robot.clear();
+	box.clear();
 	//---------------------------cube만들기-----------------------------
 	Object c{};
-	float cube_size = 2.0f;
-	Make_cube_front_left(c, cube_size);
-	cube.emplace_back(c);
-	Make_cube_front_right(c, cube_size);
-	cube.emplace_back(c);
-	Make_cube_back(c, cube_size);
-	cube.emplace_back(c);
+	float cube_size = 1.0f;
+
 	Make_cube_top(c, cube_size);
+	cube.emplace_back(c);
+	Make_cube_Right(c, cube_size);
 	cube.emplace_back(c);
 	Make_cube_bottom(c, cube_size);
 	cube.emplace_back(c);
 	Make_cube_Left(c, cube_size);
 	cube.emplace_back(c);
-	Make_cube_Right(c, cube_size);
+
+	Make_cube_back(c, cube_size);
 	cube.emplace_back(c);
+	ccnt = cube.size();
 	//---------------------------obj 파일-----------------------------
-	Object objfile{};
-	read_obj_file("robot_body.obj", objfile);
-	robot.emplace_back(objfile);
-	read_obj_file("robot_head.obj", objfile);
-	robot.emplace_back(objfile);
-	//팔 obj
-	read_obj_file("robot_left_arm.obj", objfile);
-	robot.emplace_back(objfile);
-	read_obj_file("robot_right_arm.obj", objfile);
-	robot.emplace_back(objfile);
-	//다리 obj
-	read_obj_file("robot_left_leg.obj", objfile);
-	robot.emplace_back(objfile);
-	read_obj_file("robot_right_leg.obj", objfile);
-	robot.emplace_back(objfile);
-	//로봇 코
-	read_obj_file("robot_face.obj", objfile);
-	robot.emplace_back(objfile);
-	rcnt = robot.size();
-	for (size_t i = 0; i < rcnt; i++)
-	{
-		robot[i].transform.y = robot[i].vertex[2].y - 0.02f;
-		size_t vcnt = robot[i].vertex.size();
-		for (size_t j = 0; j < vcnt; j++)
-		{
-			robot[i].vertex[j].y -= robot[i].transform.y;
-		}
-		leg_size[i] = robot[i].transform.y;
-	}
-	
-	robot[0].speed = 0.05f;
+	Make_Block(c, 0.1f);
+	box.emplace_back(c);
+	Make_Block(c, 0.06f);
+	box.emplace_back(c);
+	Make_Block(c, 0.03);
+	box.emplace_back(c);
+	box[0].transform.z = 0.1f;
+	box[1].transform.z = 0.06f;
+	box[2].transform.z = 0.03;
 
+
+
+	box[0].speed = 0.05f;
+	bcnt = box.size();
 	//-----------------------------장애물 생성---------------------------
-	block.clear();
-	for (size_t i = 0; i < 3; i++)
-	{
-		Make_Block(c, block_size);
-		int x{}, z{};
-		x = 2 * (rand() % 2) - 1;
-		z = 2 * (rand() % 2) - 1;
-		c.transform = {
-			x * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size),
-			0,
-			z * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size)
-		};
 
-		block.emplace_back(c);
-	}
 	//-----------------------------색상입히기----------------------------
-	AddColors(robot[0], 0.8f, 0.0f, 0.0f);
-	AddColors(robot[1], 0.8f, 0.8f, 0.0f);
+	AddColors(cube[0], 0.0f, 0.0f, 0.0f);
+	AddColors(cube[1], 0.8f, 0.0f, 0.0f);
 
-	AddColors(robot[2], 0.8f, 0.8f, 0.8f);
-	AddColors(robot[3], 0.8f, 0.8f, 0.8f);
+	AddColors(cube[2], 0.0f, 0.8f, 0.0f);
+	AddColors(cube[3], 0.0f, 0.0f, 0.8f);
 
-	AddColors(robot[4], 0.2f, 0.2f, 0.2f);
-	AddColors(robot[5], 0.2f, 0.2f, 0.2f);
-	AddColors(robot[6], 0.0f, 0.0f, 0.0f);
+	AddColors(cube[4], 0.8f, 0.8f, 0.8f);
 	//-------------------------변환정보 입력-------------------------
 }
 void init_camera() {
 	//3인칭 카메라
-	camera.x = 0.0f, camera.y = 0.3f, camera.z = 3.0f;
-	camera.at_x = 0.0f, camera.at_y = 0.5f, camera.at_z = 0.0f;
+	camera = {0.0f,0.0f,2.0f };
 	camera.forward = glm::vec3{ 0.0f,0.0f,1.0f };
 	camera.up = glm::vec3{ 0.0f,1.0f,0.0f };
 	camera.right = glm::vec3{ 1.0f,0.0f,0.0f };
 }
-
-void Update_camera(float angle_xz, float angle_y) {
+void Update_camera(float angle_xz, float angle_yz) {
+	// 카메라 forward 벡터의 xz 평면 회전 (yaw)
 	float vx = camera.forward.x;
 	float vz = camera.forward.z;
 	camera.forward.x = vx * cos(glm::radians(angle_xz)) - vz * sin(glm::radians(angle_xz));
 	camera.forward.z = vx * sin(glm::radians(angle_xz)) + vz * cos(glm::radians(angle_xz));
-	camera.right.x = camera.forward.x * cos(glm::radians(90.0)) - camera.forward.z * sin(glm::radians(90.0));
-	camera.right.z = camera.forward.x * sin(glm::radians(90.0)) + camera.forward.z * cos(glm::radians(90.0));
-	for (size_t i = 0; i < rcnt; i++)
-	{
-		robot[i].rotation.y = angle_xz;
-	}
-}
+	camera.forward = glm::normalize(camera.forward);
+	// 카메라 forward 벡터의 yz 평면 회전 (pitch)
+	float cy = camera.forward.y;
+	float cz = camera.forward.z;
+	camera.forward.y = cy * cos(glm::radians(angle_yz)) - cz * sin(glm::radians(angle_yz));
+	camera.forward.z = cy * sin(glm::radians(angle_yz)) + cz * cos(glm::radians(angle_yz));
+	camera.forward = glm::normalize(camera.forward);
+	// right 벡터 계산 (90도 회전)
+	camera.right.x = camera.forward.z;  // XZ 평면에서 Z가 X로 이동
+	camera.right.z = -camera.forward.x; // X가 Z로 이동, 부호 반전
+	camera.right.y = camera.forward.y;
 
+	// 외적을 통해 UP 벡터 계산
+	camera.up = glm::normalize(glm::cross(camera.forward, camera.right));
+}
+void Update_camera(float angle_xy) {
+	// 카메라 forward 벡터의 xz 평면 회전 (yaw)
+	float vx = camera.forward.x;
+	float vy = camera.forward.y;
+	camera.forward.x = vx * cos(glm::radians(angle_xy)) - vy * sin(glm::radians(angle_xy));
+	camera.forward.y = vx * sin(glm::radians(angle_xy)) + vy * cos(glm::radians(angle_xy));
+	camera.forward = glm::normalize(camera.forward);
+
+	// 외적을 통해 UP 벡터 계산
+	camera.up = glm::normalize(glm::cross(camera.forward, camera.right));
+}
 void Make_cube_top(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ size,size ,size });
-	obj.vertex.emplace_back(glm::vec3{ size,size ,-size });
-	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ -size,size ,size });
+	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ size,size ,-size });
 	AddColors_Indexlist(obj, 0.0f, 0.0f, 1.0f);
-	obj.transform = { 0.0f ,size ,0.0f };
+	obj.transform = { 0.0f ,0.0f ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
 void Make_cube_bottom(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ size,-size ,size });
-	obj.vertex.emplace_back(glm::vec3{ -size,-size ,size });
-	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,-size,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,-size ,size });
 	AddColors_Indexlist(obj, 1.0f, 0.0f, 0.0f);
-	obj.transform = { 0.0f ,size ,0.0f };
+	obj.transform = { 0.0f ,0.0f ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
 void Make_cube_Left(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ -size,size,size });
-	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
-	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ -size,-size ,size });
+	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
 	AddColors_Indexlist(obj, 1.0f, 1.0f, 0.0f);
-	obj.transform = { 0.0f ,size ,0.0f };
+	obj.transform = { 0.0f ,0.0f ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
 void Make_cube_Right(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ size,size,size });
-	obj.vertex.emplace_back(glm::vec3{ size,-size ,size });
-	obj.vertex.emplace_back(glm::vec3{ size,-size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ size,size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ size,-size ,size });
 	AddColors_Indexlist(obj, 1.0f, 0.0f, 1.0f);
-	obj.transform = { 0.0f ,size ,0.0f };
+	obj.transform = { 0.0f ,0.0f ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
@@ -812,13 +641,12 @@ void Make_cube_back(Object& obj, float size) {
 	obj.vertex.emplace_back(glm::vec3{ size,size,-size });
 	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
-	obj.vertex.emplace_back(glm::vec3{ size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{size,-size ,-size });
 	AddColors_Indexlist(obj, 0.0f, 1.0f, 1.0f);
-	obj.transform = { 0.0f ,size ,0.0f };
+	obj.transform = { 0.0f ,0.0f ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
 	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
-
 void Make_Block(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.color.clear();
@@ -859,7 +687,18 @@ void Make_Block(Object& obj, float size) {
 
 	glutPostRedisplay();
 }
+void Make_Ball() {
+	Object objfile{};
+	read_obj_file("sphere.obj", objfile);
+	int x, y{};
+	x = 2 * (rand() % 2) - 1;
+	y = 2 * (rand() % 2) - 1;
+	objfile.direction = { x * (static_cast<float>(rand()) / RAND_MAX), 
+		y * (static_cast<float>(rand()) / RAND_MAX), 0.0f };
+	objfile.direction = glm::normalize(objfile.direction);
+	ball.emplace_back(objfile);
 
+}
 void AddColors(Object& fig, float r, float g, float b) {
 	fig.color.clear();
 	// 색상 입히기
@@ -1043,7 +882,7 @@ void read_obj_file(const char* filename, Object& model) {
 		model.color.push_back(glm::vec3(1.0f, 1.0f, 1.0f)); // 흰색으로 설정
 	}
 	model.transform = { 0.0f,0.0f,0.0f };
-	model.scaling = { 1.0f,1.0f,1.0f };
+	model.scaling = { 8.0f,8.0f,8.0f };
 	model.rotation = { 0.0f,0.0f,0.0f };
 }
 

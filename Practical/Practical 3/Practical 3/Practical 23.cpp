@@ -10,7 +10,7 @@ GLuint vertexShader, fragmentShader; //세이더 객체
 GLuint shaderProgramID; // 세이더 프로그램
 
 //그려질 오브젝트 선언
-vector<Object> robot{}, cube{}, block{};
+vector<Object> robot{}, cube{}, block{}, ground{}, cylinder{};
 Coordinate Coordinate_system{};
 FreeCamera camera{};
 
@@ -23,10 +23,12 @@ int rcnt{};
 bool mode_open{ false };
 bool camera_animation{ false };
 int count{};
-int cameraID{};
+
 float r = 1.0f;
 float leg_size[7]{};
-float block_size{ 0.1 };
+float block_size{ 0.5f };
+float cylinder_size = 0.5f;
+float ground_size = 0.5f;
 float gravity = 0.005f;
 XYZ tps = { 0.0f, 0.15f,-0.1f };
 
@@ -75,10 +77,20 @@ GLvoid Render() {
 	{
 		cube[i].Draw_object();
 	}
+	//큐브 그리기
+	for (int i = 0; i < ground.size(); i++)
+	{
+		ground[i].Draw_object();
+	}
 	//장애물 그리기
 	for (int i = 0; i < block.size(); i++)
 	{
 		block[i].Draw_object();
+	}
+	//로봇 그리기
+	for (int i = 0; i < cylinder.size(); i++)
+	{
+		cylinder[i].Draw_object();
 	}
 	//로봇 그리기
 	for (int i = 0; i < robot.size(); i++)
@@ -282,6 +294,7 @@ void Timer(int value) {
 		{
 			robot[0].dir_z *= -1;
 		}
+		turn_x = turn_z = false;
 		//장애물과 xz평면 검사
 		if (!robot[0].is_jump)
 		{
@@ -296,10 +309,10 @@ void Timer(int value) {
 						robotBottomY = std::min(robotBottomY, v.y);
 					}
 					robotBottomY += robot[5].transform.y;
-					
-					if (robotBottomY < block_size)
+
+					if (robotBottomY < block_size / 20)
 					{
-						robot[0].dir_z *= -1;
+						turn_z = true;
 					}
 				}
 			}
@@ -317,19 +330,71 @@ void Timer(int value) {
 					}
 					robotBottomY += robot[5].transform.y;
 
-					if (robotBottomY < block_size)
+					if (robotBottomY < block_size / 20)
 					{
-						robot[0].dir_x *= -1;
+						turn_x = true;
 					}
 				}
 			}
 			RobotMove(4);
+			if (turn_x)
+			{
+				robot[0].dir_x *= -1;
+			}
+			if (turn_z)
+			{
+				robot[0].dir_z *= -1;
+			}
 		}
-		// 이동 구현
+		
+		turn_x = turn_z = false;
+		//원기둥과 검사
 		RobotMove(1);
+		for (int i = 0; i < cylinder.size(); i++)
+		{
+			if (is_crash(robot[5], cylinder[i])) // 충돌이 발생했는지 확인
+			{
+				float robotBottomY = robot[5].vertex[0].y;
+				for (const auto& v : robot[5].vertex) {
+					robotBottomY = std::min(robotBottomY, v.y);
+				}
+				robotBottomY += robot[5].transform.y;
+				if (robotBottomY < block_size / 20)
+				{
+					turn_z = true;
+				}
+			}
+		}
+		RobotMove(2);
 		RobotMove(3);
+		for (int i = 0; i < cylinder.size(); i++)
+		{
+			if (is_crash(robot[5], cylinder[i])) // 충돌이 발생했는지 확인
+			{
+				float robotBottomY = robot[5].vertex[0].y;
+				for (const auto& v : robot[5].vertex) {
+					robotBottomY = std::min(robotBottomY, v.y);
+				}
+				robotBottomY += robot[5].transform.y;
+				if (robotBottomY < block_size / 20)
+				{
+					turn_x = true;
+				}
+			}
+		}
+		RobotMove(4);
+		if (turn_x)
+		{
+			robot[0].dir_x *= -1;
+		}
+		if (turn_z)
+		{
+			robot[0].dir_z *= -1;
+		}
 	}
-
+	// 이동 구현
+	RobotMove(1);
+	RobotMove(3);
 	//캐릭터 회전
 	float angle = (180.0f / PI) * atan2(robot[0].dir_x, robot[0].dir_z);
 	for (size_t i = 0; i < rcnt; i++)
@@ -420,7 +485,6 @@ void SpecialKeyboard(int key, int x, int y)
 	}
 }
 GLvoid Keyboard(unsigned char key, int x, int y) {
-
 	switch (key)
 	{
 	case 'w':
@@ -546,13 +610,16 @@ void on_land() {
 	}
 	robotBottomY += robot[5].transform.y; // 로봇 하단부의 월드 좌표
 	Apply_Gravity(1);
-	if (is_crash(cube[4],robot[5])&& robotBottomY < block_size) {
-		for (int j = 0; j < rcnt; j++)
-		{
-			robot[j].transform.y = leg_size[j];
+	for (int i = 0; i < ground.size(); i++)
+	{
+		if (is_crash(ground[i], robot[5]) && robotBottomY < block_size / 20) {
+			for (int j = 0; j < rcnt; j++)
+			{
+				robot[j].transform.y = leg_size[j];
+			}
+			robot[0].is_jump = false;
+			robot[0].flight_time = 0;
 		}
-		robot[0].is_jump = false;
-		robot[0].flight_time = 0;
 	}
 }
 void on_block() {
@@ -566,14 +633,27 @@ void on_block() {
 	// 블럭 위에 있는지 확인
 	for (int i = 0; i < block.size(); i++)
 	{
-		if (is_crash(block[i],robot[5])) { 
+		float blockTop{ block[i].vertex[0].y };
+		for (const auto& v : block[i].vertex) {
+			blockTop = std::max(blockTop, v.y);
+		}
+		blockTop += block[i].transform.y;
+		if (is_crash(block[i], robot[5])) {
+			if (blockTop > 0.0f)
+			{
+				block[i].transform.y -= 0.001f;
+			}
 			for (int j = 0; j < rcnt; j++)
 			{
-				robot[j].transform.y = leg_size[j] + block_size;
+				robot[j].transform.y = leg_size[j] + blockTop;
 			}
 			robot[0].is_jump = false;
 			robot[0].flight_time = 0;
-			return;
+		}
+		if (blockTop <= 0.001f)
+		{
+			block.erase(block.begin() + i);
+			i--;
 		}
 	}
 }
@@ -626,7 +706,7 @@ void Apply_Gravity(int dir) {
 		{
 			for (int i = 0; i < rcnt; i++)
 			{
-			robot[i].transform.y -= gravity * (robot[0].flight_time + 1);
+				robot[i].transform.y -= gravity * (robot[0].flight_time + 1);
 			}
 		}
 	}
@@ -639,9 +719,8 @@ void Apply_Gravity(int dir) {
 	}
 }
 void init_figure() {
-	cube.clear();
-	robot.clear();
 	//---------------------------cube만들기-----------------------------
+	cube.clear();
 	Object c{};
 	float cube_size = 2.0f;
 	Make_cube_front_left(c, cube_size);
@@ -652,13 +731,12 @@ void init_figure() {
 	cube.emplace_back(c);
 	Make_cube_top(c, cube_size);
 	cube.emplace_back(c);
-	Make_cube_bottom(c, cube_size);
-	cube.emplace_back(c);
 	Make_cube_Left(c, cube_size);
 	cube.emplace_back(c);
 	Make_cube_Right(c, cube_size);
 	cube.emplace_back(c);
 	//---------------------------obj 파일-----------------------------
+	robot.clear();
 	Object objfile{};
 	read_obj_file("robot_body.obj", objfile);
 	robot.emplace_back(objfile);
@@ -688,23 +766,44 @@ void init_figure() {
 		}
 		leg_size[i] = robot[i].transform.y;
 	}
-	
-	robot[0].speed = 0.05f;
-
+	robot[0].speed = 0.04f;
+	//-----------------------------땅 생성---------------------------
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			Make_cube_bottom(c, ground_size);
+			c.transform = { -1.5f + 1.0f * j,ground_size,-1.5f + 1.0f * i };
+			AddColors(c, 0.5f, 0.5f, 1.0f * ((j+i) % 2));
+			ground.emplace_back(c);
+		}
+	}
+	//-----------------------------원기둥 생성---------------------------
+	cylinder.clear();
+	read_obj_file("cylinder.obj", objfile);
+	objfile.transform = { 1.5f,0.0f,1.5f };
+	cylinder.emplace_back(objfile);
+	objfile.transform = { 1.5f,0.0f,-1.5f };
+	cylinder.emplace_back(objfile);
+	objfile.transform = { -1.5f,0.0f,-1.5f };
+	cylinder.emplace_back(objfile);
+	objfile.transform = { -1.5f,0.0f,1.5f };
+	cylinder.emplace_back(objfile);
+	for (int i = 0; i < cylinder.size(); i++)
+	{
+		int cvcnt = cylinder[i].vertex.size();
+		for (int j = 0; j < cvcnt; j++)
+		{
+			cylinder[i].vertex[j].x /= 2;
+			cylinder[i].vertex[j].z /= 2;
+		}
+	}
 	//-----------------------------장애물 생성---------------------------
 	block.clear();
 	for (size_t i = 0; i < 3; i++)
 	{
 		Make_Block(c, block_size);
-		int x{}, z{};
-		x = 2 * (rand() % 2) - 1;
-		z = 2 * (rand() % 2) - 1;
-		c.transform = {
-			x * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size),
-			0,
-			z * (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (0.8f * cube_size) + (0.1f * cube_size)
-		};
-
+		c.transform = { (rand() % 4)  - 1.5f,0.0f,(rand() % 4) * 1.0f - 1.5f };
 		block.emplace_back(c);
 	}
 	//-----------------------------색상입히기----------------------------
@@ -721,7 +820,7 @@ void init_figure() {
 }
 void init_camera() {
 	//3인칭 카메라
-	camera.x = 0.0f, camera.y = 0.3f, camera.z = 3.0f;
+	camera.x = 0.0f, camera.y = 1.5f, camera.z = 2.5f;
 	camera.at_x = 0.0f, camera.at_y = 0.5f, camera.at_z = 0.0f;
 	camera.forward = glm::vec3{ 0.0f,0.0f,1.0f };
 	camera.up = glm::vec3{ 0.0f,1.0f,0.0f };
@@ -766,9 +865,9 @@ void Make_cube_bottom(Object& obj, float size) {
 void Make_cube_Left(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ -size,size,size });
-	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
-	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ -size,-size ,size });
+	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
 	AddColors_Indexlist(obj, 1.0f, 1.0f, 0.0f);
 	obj.transform = { 0.0f ,size ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
@@ -810,9 +909,9 @@ void Make_cube_front_right(Object& obj, float size) {
 void Make_cube_back(Object& obj, float size) {
 	obj.vertex.clear();
 	obj.vertex.emplace_back(glm::vec3{ size,size,-size });
-	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
-	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
 	obj.vertex.emplace_back(glm::vec3{ size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,-size ,-size });
+	obj.vertex.emplace_back(glm::vec3{ -size,size ,-size });
 	AddColors_Indexlist(obj, 0.0f, 1.0f, 1.0f);
 	obj.transform = { 0.0f ,size ,0.0f };
 	obj.scaling = { 1.0f ,1.0f ,1.0f };
@@ -825,15 +924,15 @@ void Make_Block(Object& obj, float size) {
 	obj.indexlist.clear();
 
 	// 정점 추가
-	obj.vertex.emplace_back(glm::vec3{ -size * 3 / 2, size, -size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ -size * 3 / 2, size, size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ size * 3 / 2, size, size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ size * 3 / 2, size, -size * 3 / 2 });
+	obj.vertex.emplace_back(glm::vec3{ -size , size/10, -size  });
+	obj.vertex.emplace_back(glm::vec3{ -size , size/10, size  });
+	obj.vertex.emplace_back(glm::vec3{ size , size/10, size  });
+	obj.vertex.emplace_back(glm::vec3{ size , size/10, -size  });
 
-	obj.vertex.emplace_back(glm::vec3{ -size * 3 / 2, 0, -size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ -size * 3 / 2, 0, size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ size * 3 / 2, 0, size * 3 / 2 });
-	obj.vertex.emplace_back(glm::vec3{ size * 3 / 2, 0, -size * 3 / 2 });
+	obj.vertex.emplace_back(glm::vec3{ -size , 0, -size  });
+	obj.vertex.emplace_back(glm::vec3{ -size , 0, size  });
+	obj.vertex.emplace_back(glm::vec3{ size , 0, size  });
+	obj.vertex.emplace_back(glm::vec3{ size , 0, -size  });
 
 	// 색상 추가
 	int gray = rand() % 11;
@@ -858,6 +957,23 @@ void Make_Block(Object& obj, float size) {
 	obj.indexlist.emplace_back(Index{ 0, 3, 7 });
 
 	glutPostRedisplay();
+}
+
+void Make_Ground(Object& obj, float size) {
+	obj.vertex.clear();
+	float angle{};
+	for (int i = 0; i < 8; i++)
+	{
+		obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(45.0 * i)),0.0,size * sin(glm::radians(45.0 * i)) });
+	}
+	for (int i = 0; i < 8; i++)
+	{
+		obj.vertex.emplace_back(glm::vec3{ size * cos(glm::radians(45.0 * i)),3 * size,size * sin(glm::radians(45.0 * i)) });
+	}
+	AddColors_Indexlist(obj, 1.0f, 0.6f, 1.0f);
+	obj.transform = { 0.0f ,size ,0.0f };
+	obj.scaling = { 1.0f ,1.0f ,1.0f };
+	obj.rotation = { 0.0f ,0.0f ,0.0f };
 }
 
 void AddColors(Object& fig, float r, float g, float b) {

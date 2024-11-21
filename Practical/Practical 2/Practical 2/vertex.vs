@@ -7,9 +7,10 @@ out vec3 outColor;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 project;
+uniform mat4 trans;
 
 void main()
 {
-	gl_Position = project * view* model * vec4(vPos,1.0);
+	gl_Position = trans * vec4(vPos,1.0);
 	outColor=vColor;
 }
